@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> AI 小子</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#3B82F6',
+secondary: '#6B7280'
+},
+borderRadius: {
+'none': '0px',
+'sm': '4px',
+DEFAULT: '8px',
+'md': '12px',
+'lg': '16px',
+'xl': '20px',
+'2xl': '24px',
+'3xl': '32px',
+'full': '9999px',
+'button': '8px'
+}
+}
+}
+}
+</script>
+<style>
+/* 移除强制图标内容，让图标正常显示 */
+
+/* 页面基础样式 - 移除默认边距和设置全高度 */
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+html, body {
+height: 100%;
+min-height: 100vh;
+overflow: hidden;
+}
+
+.chat-container {
+height: calc(100vh - 80px);
+}
+.message-input:focus {
+outline: none;
+}
+.history-item {
+transition: all 0.2s ease;
+}
+.history-item:hover {
+background-color: rgb(239 246 255);
+color: rgb(37 99 235);
+}
+.active-chat {
+background: rgb(239 246 255);
+color: rgb(37 99 235);
+}
+.active-chat:hover {
+background: rgb(219 234 254);
+color: rgb(29 78 216);
+transform: none;
+}
+.thinking-process {
+max-height: 0;
+overflow: hidden;
+transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.thinking-process.expanded {
+max-height: 500px;
+}
+.chat-messages::-webkit-scrollbar {
+width: 6px;
+}
+.chat-messages::-webkit-scrollbar-track {
+background: transparent;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+background-color: #E5E7EB;
+border-radius: 20px;
+}
+.glass-effect {
+background: rgba(255, 255, 255, 0.8);
+backdrop-filter: blur(16px);
+box-shadow:
+0 8px 32px rgba(0, 0, 0, 0.03),
+0 1px 2px rgba(255, 255, 255, 0.2) inset,
+0 -1px 2px rgba(0, 0, 0, 0.03) inset;
+border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.message-input {
+transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.message-input:focus {
+background-color: white;
+box-shadow:
+0 4px 12px rgba(59, 130, 246, 0.08),
+0 2px 4px rgba(59, 130, 246, 0.03);
+border: 1px solid rgba(59, 130, 246, 0.1);
+}
+.button-hover-effect {
+transition: all 0.2s ease;
+}
+.button-hover-effect:hover {
+transform: translateY(-2px);
+box-shadow:
+0 4px 16px rgba(59, 130, 246, 0.25),
+0 2px 4px rgba(59, 130, 246, 0.1);
+}
+.button-hover-effect:active {
+transform: translateY(0);
+}
+.toggle-button.active {
+background-color: rgb(59, 130, 246);
+color: white;
+}
+.toggle-button.active:hover {
+background-color: rgb(37, 99, 235);
+}
+.typing-cursor {
+animation: blink 1s infinite;
+font-weight: bold;
+color: #3B82F6;
+}
+@keyframes blink {
+0%, 50% { opacity: 1; }
+51%, 100% { opacity: 0; }
+}
+
+/* Markdown 样式 */
+.markdown-content h1 {
+font-size: 1.875rem;
+font-weight: 700;
+margin: 1.5rem 0 1rem 0;
+line-height: 1.2;
+color: #1f2937;
+}
+.markdown-content h2 {
+font-size: 1.5rem;
+font-weight: 600;
+margin: 1.25rem 0 0.75rem 0;
+line-height: 1.3;
+color: #374151;
+}
+.markdown-content h3 {
+font-size: 1.25rem;
+font-weight: 600;
+margin: 1rem 0 0.5rem 0;
+line-height: 1.4;
+color: #4b5563;
+}
+.markdown-content p {
+margin: 0.75rem 0;
+line-height: 1.6;
+color: #374151;
+}
+.markdown-content strong {
+font-weight: 600;
+color: #1f2937;
+}
+.markdown-content em {
+font-style: italic;
+color: #4b5563;
+}
+.markdown-content code {
+background-color: #f3f4f6;
+padding: 0.125rem 0.25rem;
+border-radius: 0.25rem;
+font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+font-size: 0.875rem;
+color: #dc2626;
+}
+.markdown-content pre {
+background-color: #1f2937;
+color: #f9fafb;
+padding: 1rem;
+border-radius: 0.5rem;
+overflow-x: auto;
+margin: 1rem 0;
+}
+.markdown-content pre code {
+background-color: transparent;
+padding: 0;
+color: inherit;
+font-size: 0.875rem;
+}
+.markdown-content ul, .markdown-content ol {
+margin: 0.75rem 0;
+padding-left: 1.5rem;
+}
+.markdown-content li {
+margin: 0.25rem 0;
+line-height: 1.5;
+}
+.markdown-content blockquote {
+border-left: 4px solid #3b82f6;
+background-color: #eff6ff;
+padding: 0.75rem 1rem;
+margin: 1rem 0;
+font-style: italic;
+color: #1e40af;
+}
+.markdown-content a {
+color: #3b82f6;
+text-decoration: underline;
+}
+.markdown-content a:hover {
+color: #1d4ed8;
+}
+.markdown-content table {
+width: 100%;
+border-collapse: collapse;
+margin: 1rem 0;
+}
+.markdown-content th, .markdown-content td {
+border: 1px solid #d1d5db;
+padding: 0.5rem;
+text-align: left;
+}
+.markdown-content th {
+background-color: #f9fafb;
+font-weight: 600;
+}
+.markdown-content hr {
+border: none;
+border-top: 1px solid #e5e7eb;
+margin: 1.5rem 0;
+}
+
+/* 数学公式样式 */
+.katex {
+font-size: 1em;
+}
+.katex-display {
+margin: 1rem 0;
+text-align: center;
+}
+.markdown-content .katex-display {
+background-color: #f8fafc;
+padding: 1rem;
+border-radius: 0.5rem;
+border: 1px solid #e2e8f0;
+overflow-x: auto;
+}
+.markdown-content .katex-html {
+overflow-x: auto;
+overflow-y: hidden;
+}
+</style>
+</head>
+<body class="bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-white via-sky-50 to-blue-50/30 font-sans text-gray-900">
+<div class="flex h-full w-full">
+<!-- 左侧边栏 -->
+<div class="w-64 bg-white/90 backdrop-blur-2xl border-r border-white/50 flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.05)]">
+<!-- 品牌标识 -->
+<div class="p-4 flex items-center justify-between">
+		<div class="flex items-center gap-3">
+			<!-- Logo图标 -->
+			<div class="relative">
+				<div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200/50 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+					<i class="ri-robot-line text-white text-lg"></i>
+				</div>
+				<div class="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
+			</div>
+			<!-- Logo文字 -->
+			<div class="flex flex-col">
+				<div class="font-bold text-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+					AI小子
+				</div>
+				<div class="text-xs text-gray-400 font-medium tracking-wide">
+					智能助手
+				</div>
+			</div>
+		</div>
+<div class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+<i class="ri-menu-line ri-lg"></i>
+</div>
+</div>
+<!-- 新对话按钮 -->
+<div class="p-3">
+		<button class="bg-blue-50 text-blue-600 py-1.5 px-4 flex items-center justify-center gap-1.5 rounded-full hover:bg-blue-100 transition-colors text-sm mx-auto whitespace-nowrap">
+			<i class="ri-add-line text-xs"></i>
+			<span>开启新对话</span>
+		</button>
+</div>
+<!-- 对话历史 -->
+<div class="flex-1 overflow-y-auto">
+<div class="p-3">
+<div class="text-sm text-gray-500 mb-2">7 天内</div>
+<div class="active-chat history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">用户打字失误问候助理</div>
+</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">Python 爬虫开发问题</div>
+</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">前端布局设计咨询</div>
+</div>
+</div>
+<div class="p-3">
+<div class="text-sm text-gray-500 mb-2">30 天内</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">数据分析报告生成</div>
+</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">React 组件优化方案</div>
+</div>
+</div>
+<div class="p-3">
+<div class="text-sm text-gray-500 mb-2">2025-03</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">智能家居系统设计</div>
+</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">机器学习模型调优</div>
+</div>
+</div>
+<div class="p-3">
+<div class="text-sm text-gray-500 mb-2">2025-02</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">企业数据安全策略</div>
+</div>
+<div class="history-item py-2 px-3 rounded text-sm mb-1 cursor-pointer">
+<div class="truncate">自动化测试框架搭建</div>
+</div>
+</div>
+</div>
+<!-- 底部功能区 -->
+<div class="p-3 border-t border-gray-100">
+<button class="w-full border border-primary text-gray-800 py-2 px-4 flex items-center justify-between !rounded-button mb-3 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<div class="w-5 h-5 flex items-center justify-center text-primary">
+<i class="ri-download-line"></i>
+</div>
+<span>下载 App</span>
+</div>
+<span class="text-xs bg-blue-100 text-primary px-1.5 py-0.5 rounded">NEW</span>
+</button>
+<div class="flex items-center gap-2 p-2 cursor-pointer">
+<div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+<i class="ri-user-line text-gray-600"></i>
+</div>
+<div class="text-sm text-gray-600">个人信息</div>
+</div>
+</div>
+</div>
+<!-- 中间聊天区域 -->
+<div class="flex-1 flex flex-col bg-white">
+<!-- 聊天消息区域 -->
+<div class="flex-1 overflow-y-auto chat-messages p-4">
+<!-- 初始欢迎信息 -->
+<div id="welcome-message" class="flex flex-col items-center justify-center h-full">
+<div class="relative mb-6">
+<div class="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-200/50 ring-8 ring-white/80 backdrop-blur-xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
+<i class="ri-robot-line text-white text-3xl"></i>
+</div>
+<div class="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse flex items-center justify-center">
+<div class="w-2 h-2 bg-white rounded-full"></div>
+</div>
+</div>
+			<h2 class="text-xl font-medium mb-2">我是 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent font-bold">AI小子</span>，很高兴见到你！</h2>
+<p class="text-gray-500 text-center max-w-md mb-4">我可以帮你写代码、回答问题、生成内容，甚至可以进行深度思考。请把你的任务交给我吧～</p>
+</div>
+<!-- 聊天消息容器 (动态生成内容) -->
+<div id="chat-content" class="hidden space-y-6">
+<!-- 真实的聊天消息将在这里动态显示 -->
+</div>
+</div>
+<!-- 新对话按钮 (初始隐藏) -->
+<div id="new-chat-button" class="hidden px-4 py-2">
+	<button class="bg-[#EEF3FE] text-[#4E89FD] py-1.5 px-4 flex items-center justify-center gap-1.5 rounded-full hover:bg-blue-100 transition-colors text-sm mx-auto whitespace-nowrap">
+		<i class="ri-add-line text-xs"></i>
+		<span>开启新对话</span>
+	</button>
+</div>
+<!-- 输入区域 -->
+<div class="p-4">
+<div class="flex items-center gap-2 mb-3">
+		<button id="thinking-toggle" class="toggle-button bg-blue-50 text-blue-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-blue-100 transition-colors">
+			<div class="w-4 h-4 flex items-center justify-center">
+				<i class="ri-brain-line"></i>
+			</div>
+			<span>深度思考 (R1)</span>
+		</button>
+		<button id="search-toggle" class="toggle-button bg-gray-50 text-gray-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-gray-100 transition-colors">
+			<div class="w-4 h-4 flex items-center justify-center">
+				<i class="ri-search-line"></i>
+			</div>
+			<span>联网搜索</span>
+		</button>
+</div>
+<div class="relative">
+<textarea
+class="message-input w-full bg-gray-50 rounded-lg pl-4 pr-12 py-3 resize-none border-none h-12 text-gray-800 focus:bg-gray-100 transition-colors"
+				placeholder="给 AI小子 发送消息"
+rows="1"
+></textarea>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+<i class="ri-attachment-2"></i>
+</button>
+<button id="send-button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary">
+<i class="ri-send-plane-fill"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script id="chat-interaction">
+// Markdown渲染函数
+function renderMarkdown(text) {
+if (typeof marked === 'undefined') {
+return text.replace(/\n/g, '<br>');
+}
+
+try {
+// 保护数学公式不被Markdown处理
+const mathPlaceholders = [];
+let processedText = text;
+
+// 先提取并保护块级数学公式 $$...$$
+processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
+mathPlaceholders.push({
+placeholder: placeholder,
+original: match,
+type: 'block'
+});
+return placeholder;
+});
+
+// 再提取并保护行内数学公式 $...$
+processedText = processedText.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
+const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
+mathPlaceholders.push({
+placeholder: placeholder,
+original: match,
+type: 'inline'
+});
+return placeholder;
+});
+
+// 保护 \(...\) 和 \[...\] 格式
+processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
+const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
+mathPlaceholders.push({
+placeholder: placeholder,
+original: match,
+type: 'inline'
+});
+return placeholder;
+});
+
+processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
+const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
+mathPlaceholders.push({
+placeholder: placeholder,
+original: match,
+type: 'block'
+});
+return placeholder;
+});
+
+// 配置marked选项
+marked.setOptions({
+breaks: true,
+gfm: true,
+sanitize: false
+});
+
+// 渲染Markdown
+let rendered = marked.parse(processedText);
+
+// 恢复数学公式
+mathPlaceholders.forEach(item => {
+rendered = rendered.replace(item.placeholder, item.original);
+});
+
+// 使用DOMPurify清理HTML以防止XSS攻击
+rendered = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rendered, {
+ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt'],
+ADD_ATTR: ['class', 'style']
+}) : rendered;
+
+return rendered;
+} catch (error) {
+console.error('Markdown渲染错误:', error);
+return text.replace(/\n/g, '<br>');
+}
+}
+
+// 数学公式渲染配置
+const mathConfig = {
+delimiters: [
+{left: '$$', right: '$$', display: true},
+{left: '$', right: '$', display: false},
+{left: '\\(', right: '\\)', display: false},
+{left: '\\[', right: '\\]', display: true}
+],
+throwOnError: false,
+errorColor: '#cc0000',
+strict: false
+};
+
+// 等待KaTeX加载完成的函数
+function waitForKaTeX() {
+return new Promise((resolve) => {
+if (typeof window.renderMathInElement === 'function') {
+resolve();
+} else {
+const checkKaTeX = setInterval(() => {
+if (typeof window.renderMathInElement === 'function') {
+clearInterval(checkKaTeX);
+resolve();
+}
+}, 100);
+}
+});
+}
+
+// 安全渲染数学公式
+async function renderMathSafely(element) {
+try {
+await waitForKaTeX();
+if (element && typeof window.renderMathInElement === 'function') {
+window.renderMathInElement(element, mathConfig);
+}
+} catch (error) {
+console.error('数学公式渲染错误:', error);
+}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+const messageInput = document.querySelector('.message-input');
+const sendButton = document.getElementById('send-button');
+const welcomeMessage = document.getElementById('welcome-message');
+const chatContent = document.getElementById('chat-content');
+const newChatButton = document.getElementById('new-chat-button');
+const thinkingToggle = document.getElementById('thinking-toggle');
+const searchToggle = document.getElementById('search-toggle');
+  // 按钮切换功能
+  thinkingToggle.addEventListener('click', function() {
+    this.classList.toggle('active');
+  });
+  
+  searchToggle.addEventListener('click', function() {
+    this.classList.toggle('active');
+  });
+
+  // 自动调整文本区域高度
+	messageInput.addEventListener('input', function() {
+		this.style.height = 'auto';
+		this.style.height = (this.scrollHeight > 48) ? this.scrollHeight + 'px' : '48px';
+	});
+// 发送消息
+sendButton.addEventListener('click', async function() {
+const message = messageInput.value.trim();
+if (message) {
+console.log('发送消息:', message);
+// 立即清空输入框并重置高度
+messageInput.value = '';
+messageInput.style.height = '48px';
+
+// 隐藏欢迎信息，显示聊天内容和新对话按钮
+welcomeMessage.classList.add('hidden');
+chatContent.classList.remove('hidden');
+newChatButton.classList.remove('hidden');
+
+// 发送消息到后端
+await sendMessageToAPI(message);
+}
+});
+// 按 Enter 发送消息
+messageInput.addEventListener('keydown', function(e) {
+if (e.key === 'Enter' && !e.shiftKey) {
+e.preventDefault();
+sendButton.click();
+}
+});
+
+// API 交互函数
+let currentChatId = null;
+
+async function sendMessageToAPI(message) {
+try {
+// 显示用户消息
+displayUserMessage(message);
+
+// 显示AI消息占位符
+const aiMessageElement = showTypingMessage();
+
+// 使用流式接口
+const response = await fetch('/api/chat/stream', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify({
+message: message,
+chatId: currentChatId,
+useThinking: thinkingToggle.classList.contains('active'),
+useSearch: searchToggle.classList.contains('active')
+})
+});
+
+if (!response.ok) {
+throw new Error('网络请求失败');
+}
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+let aiContent = '';
+
+while (true) {
+const { done, value } = await reader.read();
+if (done) break;
+
+const chunk = decoder.decode(value);
+const lines = chunk.split('\n');
+
+for (const line of lines) {
+if (line.startsWith('data: ')) {
+try {
+const jsonStr = line.slice(6).trim();
+if (jsonStr) {
+const data = JSON.parse(jsonStr);
+if (data.type === 'chatId') {
+currentChatId = data.chatId;
+} else if (data.type === 'content') {
+aiContent += data.content;
+// 实现打字机效果
+typeWriterEffect(aiMessageElement, aiContent);
+} else if (data.type === 'end') {
+// 流式输出结束，清理光标
+finishTyping(aiMessageElement);
+break;
+} else if (data.type === 'error') {
+showErrorMessage(data.error);
+return;
+}
+}
+} catch (e) {
+console.log('跳过无效JSON:', line);
+}
+}
+}
+}
+
+} catch (error) {
+console.error('发送消息失败:', error);
+showErrorMessage('网络连接失败，请检查网络后重试');
+}
+}
+
+function displayUserMessage(message) {
+const chatContainer = document.getElementById('chat-content');
+const now = new Date().toLocaleString('zh-CN');
+
+// 渲染Markdown格式的用户消息
+const renderedMessage = renderMarkdown(message);
+
+const userHTML = `
+<div class="flex justify-end mb-4">
+<div class="max-w-3xl">
+<div class="flex justify-end mb-1">
+<div class="text-sm text-gray-500">${now}</div>
+</div>
+<div class="relative group">
+<div class="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-lg py-3 px-4 text-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 markdown-content">
+${renderedMessage}
+</div>
+</div>
+</div>
+</div>
+`;
+
+chatContainer.insertAdjacentHTML('beforeend', userHTML);
+
+// 渲染数学公式
+const newMessage = chatContainer.querySelector('.markdown-content:last-of-type');
+if (newMessage) {
+renderMathSafely(newMessage);
+}
+
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function showTypingMessage() {
+const chatContainer = document.getElementById('chat-content');
+const now = new Date().toLocaleString('zh-CN');
+
+const typingHTML = `
+<div class="flex justify-start ai-message">
+<div class="max-w-3xl">
+<div class="flex items-center gap-2 mb-1">
+<div class="font-medium">AI小子</div>
+<div class="text-sm text-gray-500">${now}</div>
+</div>
+<div class="bg-[#F7F8FA] rounded-lg py-3 px-4 text-gray-800 min-h-[1.5rem] markdown-content">
+<span class="ai-content"></span>
+<span class="typing-cursor">|</span>
+</div>
+</div>
+</div>
+`;
+
+chatContainer.insertAdjacentHTML('beforeend', typingHTML);
+chatContainer.scrollTop = chatContainer.scrollHeight;
+
+// 添加光标闪烁效果（使用CSS动画）
+const cursor = chatContainer.querySelector('.ai-message:last-child .typing-cursor');
+
+// 返回消息元素
+const messageElement = chatContainer.querySelector('.ai-message:last-child .ai-content');
+return messageElement;
+}
+
+function typeWriterEffect(element, fullText) {
+// 渲染Markdown并更新内容
+const renderedText = renderMarkdown(fullText);
+element.innerHTML = renderedText;
+
+// 渲染数学公式
+renderMathSafely(element);
+
+// 滚动到底部
+const chatContainer = document.getElementById('chat-content');
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function finishTyping(element) {
+// 清理光标
+const cursor = element.parentElement.querySelector('.typing-cursor');
+if (cursor) {
+cursor.style.display = 'none';
+}
+}
+
+// 旧的displayMessages函数已被流式显示替代
+
+function showErrorMessage(error) {
+// 移除加载消息
+const loadingMessage = document.querySelector('.loading-message');
+if (loadingMessage) {
+loadingMessage.remove();
+}
+
+const chatContainer = document.getElementById('chat-content');
+const errorHTML = `
+<div class="flex justify-start">
+<div class="max-w-3xl">
+<div class="flex items-center gap-2 mb-1">
+<div class="font-medium">AI小子</div>
+<div class="text-sm text-gray-500">${new Date().toLocaleString('zh-CN')}</div>
+</div>
+<div class="bg-red-50 border border-red-200 rounded-lg py-3 px-4 text-red-800">
+❌ ${error}
+</div>
+</div>
+</div>
+`;
+chatContainer.insertAdjacentHTML('beforeend', errorHTML);
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function bindThinkingToggle() {
+document.querySelectorAll('.thinking-toggle').forEach(button => {
+button.addEventListener('click', function() {
+const thinkingProcess = this.nextElementSibling;
+thinkingProcess.classList.toggle('expanded');
+// 更新箭头图标
+const arrowIcon = this.querySelector('.ri-arrow-down-s-line, .ri-arrow-up-s-line');
+if (thinkingProcess.classList.contains('expanded')) {
+arrowIcon.classList.replace('ri-arrow-down-s-line', 'ri-arrow-up-s-line');
+} else {
+arrowIcon.classList.replace('ri-arrow-up-s-line', 'ri-arrow-down-s-line');
+}
+});
+});
+}
+
+// 加载聊天历史
+async function loadChatHistory() {
+try {
+const response = await fetch('/api/chat/history');
+const result = await response.json();
+if (result.success) {
+updateHistoryList(result.data);
+}
+} catch (error) {
+console.error('加载历史失败:', error);
+}
+}
+
+function updateHistoryList(history) {
+// 这里可以更新侧边栏的历史列表
+// 现在先打印到控制台
+console.log('聊天历史:', history);
+}
+
+// 页面加载时获取历史
+document.addEventListener('DOMContentLoaded', function() {
+loadChatHistory();
+});
+// 移除重复的思考过程切换事件绑定（已在上面绑定过了）
+});
+</script>
+<script id="history-interaction">
+document.addEventListener('DOMContentLoaded', function() {
+const historyItems = document.querySelectorAll('.history-item');
+const messageInput = document.querySelector('.message-input');
+function startNewChat() {
+// Remove active state from all history items
+historyItems.forEach(i => i.classList.remove('active-chat'));
+// Show welcome message, hide chat content and new chat button
+document.getElementById('welcome-message').classList.remove('hidden');
+document.getElementById('chat-content').classList.add('hidden');
+document.getElementById('new-chat-button').classList.add('hidden');
+// Clear and focus input
+messageInput.value = '';
+messageInput.style.height = '48px';
+messageInput.focus();
+// Add animation effect
+const welcomeDiv = document.getElementById('welcome-message');
+welcomeDiv.style.opacity = '0';
+welcomeDiv.style.transform = 'translateY(20px)';
+requestAnimationFrame(() => {
+welcomeDiv.style.transition = 'all 0.5s ease';
+welcomeDiv.style.opacity = '1';
+welcomeDiv.style.transform = 'translateY(0)';
+});
+}
+historyItems.forEach(item => {
+item.addEventListener('click', function() {
+historyItems.forEach(i => i.classList.remove('active-chat'));
+this.classList.add('active-chat');
+document.getElementById('welcome-message').classList.add('hidden');
+document.getElementById('chat-content').classList.remove('hidden');
+document.getElementById('new-chat-button').classList.remove('hidden');
+});
+});
+// New chat button click event
+const newChatButtons = document.querySelectorAll('button:has(.ri-add-line)');
+newChatButtons.forEach(button => {
+button.addEventListener('click', startNewChat);
+});
+});
+</script>
+</body>
+</html>
