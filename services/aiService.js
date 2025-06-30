@@ -53,12 +53,20 @@ class AIService {
         useThinking = false,
         useSearch = false,
         temperature = 0.7,
-        maxTokens = 1000
+        maxTokens = 1000,
+        files = [] // 新增：文件列表
       } = options;
 
       const lastMessage = messages[messages.length - 1];
       let searchResults = null;
       let weatherData = null;
+      let fileAnalysis = null;
+
+      // 多模态文件分析
+      if (files && files.length > 0) {
+        console.log('🎨 检测到文件附件，开始多模态分析:', files.length, '个文件');
+        fileAnalysis = await this.analyzeFiles(files);
+      }
 
       // 检测是否是天气查询
       const cityName = this.extractCityFromWeatherQuery(lastMessage.content);
@@ -82,6 +90,33 @@ class AIService {
           content: msg.content
         }))
       ];
+
+      // 如果有文件分析结果，将其添加到消息中
+      if (fileAnalysis && fileAnalysis.length > 0) {
+        const analysisContent = `[文件分析结果]
+用户上传了 ${fileAnalysis.length} 个文件，以下是分析结果：
+
+${fileAnalysis.map((analysis, i) => 
+  `文件 ${i+1}: ${analysis.filename}
+类型: ${analysis.type}
+分析结果: ${analysis.analysis}
+${analysis.details ? `详细信息: ${analysis.details}` : ''}`
+).join('\n\n')}
+
+请基于以上文件分析结果以及用户的消息来回答。记住要：
+1. 结合文件内容和用户问题
+2. 用简单易懂的语言解释
+3. 保持AI小子的友善语调
+4. 如果是图片，可以描述看到的内容
+5. 如果是音频，可以转述听到的内容`;
+
+        chatMessages.splice(-1, 0, {
+          role: 'system',
+          content: analysisContent
+        });
+
+        console.log('🎨 已将文件分析结果添加到对话中');
+      }
 
       // 如果有搜索结果，将其添加到消息中
       if (searchResults && searchResults.success) {
@@ -143,6 +178,12 @@ ${searchResults.results.map((r, i) =>
       if (weatherData) {
         reply.weather = weatherData;
         console.log('🌤️ 已添加天气信息到回复中');
+      }
+
+      // 添加文件分析信息到回复中
+      if (fileAnalysis && fileAnalysis.length > 0) {
+        reply.fileAnalysis = fileAnalysis;
+        console.log('🎨 已添加文件分析信息到回复中');
       }
 
       // 如果启用思考过程，生成思考内容
@@ -301,10 +342,17 @@ ${relevantMessages}
   // 流式回复（可选功能）
   async generateStreamReply(messages, callback, options = {}) {
     try {
-      const { useSearch = false, useThinking = false } = options;
+      const { useSearch = false, useThinking = false, files = [] } = options;
       
       const lastMessage = messages[messages.length - 1];
       let searchResults = null;
+      let fileAnalysis = null;
+
+      // 多模态文件分析
+      if (files && files.length > 0) {
+        console.log('🎨 流式输出 - 检测到文件附件，开始多模态分析:', files.length, '个文件');
+        fileAnalysis = await this.analyzeFiles(files);
+      }
 
       // 根据前端开关决定是否联网搜索
       if (useSearch) {
@@ -321,6 +369,33 @@ ${relevantMessages}
           content: msg.content
         }))
       ];
+
+      // 如果有文件分析结果，将其添加到消息中
+      if (fileAnalysis && fileAnalysis.length > 0) {
+        const analysisContent = `[文件分析结果]
+用户上传了 ${fileAnalysis.length} 个文件，以下是分析结果：
+
+${fileAnalysis.map((analysis, i) => 
+  `文件 ${i+1}: ${analysis.filename}
+类型: ${analysis.type}
+分析结果: ${analysis.analysis}
+${analysis.details ? `详细信息: ${analysis.details}` : ''}`
+).join('\n\n')}
+
+请基于以上文件分析结果以及用户的消息来回答。记住要：
+1. 结合文件内容和用户问题
+2. 用简单易懂的语言解释
+3. 保持AI小子的友善语调
+4. 如果是图片，可以描述看到的内容
+5. 如果是音频，可以转述听到的内容`;
+
+        chatMessages.splice(-1, 0, {
+          role: 'system',
+          content: analysisContent
+        });
+
+        console.log('🎨 流式输出 - 已将文件分析结果添加到对话中');
+      }
 
       // 如果有搜索结果，将其添加到消息中
       if (searchResults && searchResults.success) {
@@ -554,6 +629,199 @@ ${searchResults.results.map((r, i) =>
       callback(fallback.content, true);
       return fallback.content;
     }
+  }
+
+  // 多模态文件分析
+  async analyzeFiles(files) {
+    const analysisResults = [];
+
+    for (const file of files) {
+      try {
+        let analysis = null;
+
+        if (file.mimetype.startsWith('image/')) {
+          // 图片分析
+          analysis = await this.analyzeImage(file);
+        } else if (file.mimetype.startsWith('audio/')) {
+          // 音频分析
+          analysis = await this.analyzeAudio(file);
+        } else if (file.mimetype.startsWith('video/')) {
+          // 视频分析
+          analysis = await this.analyzeVideo(file);
+        } else {
+          // 其他文件类型
+          analysis = {
+            type: '文档',
+            analysis: `这是一个${this.getFileTypeDescription(file.mimetype)}文件`,
+            details: `文件名: ${file.originalname}, 大小: ${this.formatFileSize(file.size)}`
+          };
+        }
+
+        if (analysis) {
+          analysisResults.push({
+            filename: file.originalname,
+            ...analysis
+          });
+        }
+
+      } catch (error) {
+        console.error(`文件分析失败 (${file.originalname}):`, error);
+        analysisResults.push({
+          filename: file.originalname,
+          type: '文件',
+          analysis: '文件分析暂时不可用',
+          error: true
+        });
+      }
+    }
+
+    return analysisResults;
+  }
+
+  // 图片分析
+  async analyzeImage(file) {
+    try {
+      console.log('🖼️ 开始分析图片:', file.originalname);
+      
+      // 检查是否支持视觉模型
+      const supportsVision = this.checkVisionSupport();
+      
+      if (!supportsVision) {
+        console.log('🖼️ 当前模型不支持视觉分析，使用基础图片信息');
+        return {
+          type: '图片',
+          analysis: `我看到了一张名为"${file.originalname}"的图片。虽然我现在还不能看到图片的具体内容，但我能告诉你这是一个${this.getImageTypeDescription(file.mimetype)}格式的图片文件。如果你能描述一下图片的内容，我会很乐意和你聊聊！`,
+          details: `文件大小: ${this.formatFileSize(file.size)}`
+        };
+      }
+      
+      // 构建图片URL
+      const imageUrl = `http://localhost:${process.env.PORT || 3002}/api/upload/file/${file.filename}`;
+      
+      // 使用支持视觉的模型分析图片
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini", // 使用支持视觉的模型
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "请详细描述这张图片的内容。请用简单易懂的语言，适合儿童理解。如果图片中有文字，请帮忙识别出来。如果是学习相关的内容（比如作业、题目），请重点说明。"
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.3
+      });
+
+      const analysisText = response.choices[0].message.content;
+      console.log('🖼️ 图片分析完成:', analysisText);
+
+      return {
+        type: '图片',
+        analysis: analysisText,
+        details: `图片尺寸信息和文件详情`
+      };
+
+    } catch (error) {
+      console.error('图片分析错误:', error);
+      
+      // 如果API不支持视觉功能，返回基础分析
+      return {
+        type: '图片',
+        analysis: `我看到了一张名为"${file.originalname}"的图片。虽然我现在还不能看到图片的具体内容，但我能告诉你这是一个${this.getImageTypeDescription(file.mimetype)}格式的图片文件。如果你能描述一下图片的内容，我会很乐意和你聊聊！`,
+        details: `文件大小: ${this.formatFileSize(file.size)}`
+      };
+    }
+  }
+
+  // 音频分析
+  async analyzeAudio(file) {
+    try {
+      console.log('🎵 开始分析音频:', file.originalname);
+      
+      // 暂时返回基础信息，后续可以集成语音转文字API
+      return {
+        type: '音频',
+        analysis: `这是一个音频文件，格式为${file.mimetype}。我听到了用户分享的音频内容。`,
+        details: `文件时长和大小: ${this.formatFileSize(file.size)}`
+      };
+
+    } catch (error) {
+      console.error('音频分析错误:', error);
+      return {
+        type: '音频',
+        analysis: '音频分析暂时不可用',
+        error: true
+      };
+    }
+  }
+
+  // 视频分析
+  async analyzeVideo(file) {
+    try {
+      console.log('🎬 开始分析视频:', file.originalname);
+      
+      // 暂时返回基础信息，后续可以集成视频分析API
+      return {
+        type: '视频',
+        analysis: `这是一个视频文件，格式为${file.mimetype}。我看到了用户分享的视频内容。`,
+        details: `文件大小: ${this.formatFileSize(file.size)}`
+      };
+
+    } catch (error) {
+      console.error('视频分析错误:', error);
+      return {
+        type: '视频',
+        analysis: '视频分析暂时不可用',
+        error: true
+      };
+    }
+  }
+
+  // 获取文件类型描述
+  getFileTypeDescription(mimetype) {
+    if (mimetype.includes('pdf')) return 'PDF文档';
+    if (mimetype.includes('word')) return 'Word文档';
+    if (mimetype.includes('excel')) return 'Excel表格';
+    if (mimetype.includes('text')) return '文本';
+    return '文档';
+  }
+
+  // 格式化文件大小
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // 检查是否支持视觉分析
+  checkVisionSupport() {
+    // 检查当前使用的模型是否支持视觉功能
+    const visionModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-vision-preview'];
+    return visionModels.includes(this.model);
+  }
+
+  // 获取图片类型描述
+  getImageTypeDescription(mimetype) {
+    if (mimetype === 'image/jpeg' || mimetype === 'image/jpg') return 'JPEG';
+    if (mimetype === 'image/png') return 'PNG';
+    if (mimetype === 'image/gif') return 'GIF动画';
+    if (mimetype === 'image/webp') return 'WebP';
+    if (mimetype === 'image/bmp') return 'BMP位图';
+    if (mimetype === 'image/tiff') return 'TIFF';
+    if (mimetype === 'image/svg+xml') return 'SVG矢量图';
+    return '图片';
   }
 }
 

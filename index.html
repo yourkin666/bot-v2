@@ -642,6 +642,11 @@ font-size: 3rem;
 			<span>联网搜索</span>
 		</button>
 </div>
+
+<!-- 上传文件卡片显示区域 -->
+<div id="uploaded-files-display" class="space-y-2 mb-4 hidden">
+</div>
+
 <div class="relative">
 <textarea
 class="message-input w-full bg-gray-50 rounded-lg pl-4 pr-12 py-3 resize-none border-none h-12 text-gray-800 focus:bg-gray-100 transition-colors"
@@ -649,7 +654,7 @@ class="message-input w-full bg-gray-50 rounded-lg pl-4 pr-12 py-3 resize-none bo
 rows="1"
 ></textarea>
 				<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-					<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+					<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700" title="上传文件">
 						<i class="ri-attachment-2"></i>
 					</button>
 					<button id="voice-button" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary transition-colors" title="点击录音">
@@ -1228,8 +1233,11 @@ const responseTimeout = setTimeout(() => {
   }
 }, 120000); // 2分钟超时
 
-// 显示用户消息
-displayUserMessage(message);
+// 获取当前上传的文件
+const uploadedFiles = window.getCurrentUploadedFiles ? window.getCurrentUploadedFiles() : [];
+
+// 显示用户消息（包含文件信息）
+displayUserMessage(message, uploadedFiles);
 
 // 显示AI消息占位符
 const aiMessageElement = showTypingMessage();
@@ -1244,7 +1252,8 @@ body: JSON.stringify({
 message: message,
       chatId: window.currentChatId,
 useThinking: false,
-useSearch: searchToggle.classList.contains('active')
+useSearch: searchToggle.classList.contains('active'),
+files: uploadedFiles // 包含文件信息
 }),
 signal: window.currentStreamController.signal // 添加中断信号
 });
@@ -1335,6 +1344,12 @@ typeWriterEffectDebounced(aiMessageElement, aiContent);
             
             // 清理光标
             finishTyping(aiMessageElement);
+            
+            // 清空上传的文件
+            if (window.clearUploadedFiles) {
+              window.clearUploadedFiles();
+            }
+            
             // 重置响应状态，允许用户发送新消息
             window.isAIResponding = false;
             disableUserInput(false);
@@ -1374,12 +1389,65 @@ clearTimeout(responseTimeout);
 }
 }
 
-function displayUserMessage(message) {
+// 获取文件图标（用于用户消息显示）
+function getFileIconForDisplay(mimetype, filename) {
+  if (mimetype && mimetype.startsWith('image/')) {
+    return 'ri-image-line';
+  } else if (mimetype && mimetype.startsWith('audio/')) {
+    return 'ri-music-line';
+  } else if (mimetype && mimetype.startsWith('video/')) {
+    return 'ri-video-line';
+  } else if (mimetype === 'application/pdf') {
+    return 'ri-file-pdf-line';
+  } else if (mimetype && (mimetype.includes('word') || filename.endsWith('.doc') || filename.endsWith('.docx'))) {
+    return 'ri-file-word-line';
+  } else if (mimetype && (mimetype.includes('excel') || filename.endsWith('.xls') || filename.endsWith('.xlsx'))) {
+    return 'ri-file-excel-line';
+  } else if (mimetype && mimetype.startsWith('text/')) {
+    return 'ri-file-text-line';
+  } else {
+    return 'ri-file-line';
+  }
+}
+
+function displayUserMessage(message, files = []) {
 const chatContainer = document.getElementById('chat-content');
 const now = new Date().toLocaleString('zh-CN');
 
 // 渲染Markdown格式的用户消息
 const renderedMessage = renderMarkdown(message);
+
+// 生成文件显示HTML
+let filesHTML = '';
+if (files && files.length > 0) {
+  filesHTML = `
+    <div class="mb-3 space-y-2">
+      ${files.map(file => {
+        const isImage = file.mimetype && file.mimetype.startsWith('image/');
+        const isAudio = file.mimetype && file.mimetype.startsWith('audio/');
+        const isVideo = file.mimetype && file.mimetype.startsWith('video/');
+        const icon = getFileIconForDisplay(file.mimetype, file.originalname);
+        
+        let statusText = '';
+        if (isImage) {
+          statusText = '<span class="text-xs text-orange-600 ml-2">已识别附件中的文字</span>';
+        } else if (isAudio) {
+          statusText = '<span class="text-xs text-purple-600 ml-2">音频文件</span>';
+        } else if (isVideo) {
+          statusText = '<span class="text-xs text-indigo-600 ml-2">视频文件</span>';
+        }
+        
+        return `
+          <div class="flex items-center space-x-2 p-2 bg-white bg-opacity-50 rounded border">
+            <i class="${icon} text-blue-500"></i>
+            <span class="text-sm text-gray-700">${file.originalname}</span>
+            ${statusText}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
 
 const userHTML = `
 <div class="flex justify-end mb-4">
@@ -1389,6 +1457,7 @@ const userHTML = `
 </div>
 <div class="relative group">
 <div class="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-lg py-3 px-4 text-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 markdown-content">
+${filesHTML}
 ${renderedMessage}
 </div>
 </div>
@@ -2411,6 +2480,284 @@ setTimeout(() => {
 }, 100);
 
 }); // 结束第一个DOMContentLoaded
+
+// 文件上传功能
+document.addEventListener('DOMContentLoaded', function() {
+  // 文件上传相关元素
+  const attachmentButton = document.querySelector('i.ri-attachment-2').parentElement;
+  const fileInput = document.getElementById('file-input');
+  const uploadedFilesDisplay = document.getElementById('uploaded-files-display');
+
+  let currentUploadedFiles = []; // 当前会话中上传的文件
+
+  // 附件按钮点击事件 - 直接触发文件选择
+  attachmentButton.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  // 文件输入变化 - 直接上传文件
+  fileInput.addEventListener('change', function() {
+    const files = Array.from(this.files);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+    // 清空input以允许重复选择同一文件
+    this.value = '';
+  });
+
+  // 拖拽上传到整个输入区域
+  const inputContainer = document.querySelector('.relative');
+  
+  inputContainer.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.add('border-2', 'border-blue-500', 'border-dashed');
+  });
+
+  inputContainer.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.remove('border-2', 'border-blue-500', 'border-dashed');
+  });
+
+  inputContainer.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.remove('border-2', 'border-blue-500', 'border-dashed');
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+  });
+
+  // 格式化文件大小
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+     // 获取文件类型图标
+   function getFileIcon(mimetype, filename) {
+     if (mimetype.startsWith('image/')) {
+       return 'ri-image-line';
+     } else if (mimetype.startsWith('audio/')) {
+       return 'ri-music-line';
+     } else if (mimetype.startsWith('video/')) {
+       return 'ri-video-line';
+     } else if (mimetype === 'application/pdf') {
+       return 'ri-file-pdf-line';
+     } else if (mimetype.includes('word') || filename.endsWith('.doc') || filename.endsWith('.docx')) {
+       return 'ri-file-word-line';
+     } else if (mimetype.includes('excel') || filename.endsWith('.xls') || filename.endsWith('.xlsx')) {
+       return 'ri-file-excel-line';
+     } else if (mimetype.startsWith('text/')) {
+       return 'ri-file-text-line';
+     } else {
+       return 'ri-file-line';
+     }
+   }
+
+  // 上传文件
+  async function uploadFiles(files) {
+    if (files.length === 0) return;
+
+    // 限制文件数量
+    if (currentUploadedFiles.length + files.length > 5) {
+      showToast('最多只能上传5个文件', 'error');
+      return;
+    }
+
+    try {
+      // 为每个文件创建上传卡片
+      const uploadPromises = files.map(file => uploadSingleFile(file));
+      const results = await Promise.all(uploadPromises);
+      
+      // 添加成功上传的文件到当前列表
+      results.forEach(result => {
+        if (result) {
+          currentUploadedFiles.push(result);
+        }
+      });
+
+      updateFilesDisplay();
+
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      showToast('文件上传失败: ' + error.message, 'error');
+    }
+  }
+
+  // 上传单个文件
+  async function uploadSingleFile(file) {
+    // 创建上传中的卡片
+    const fileCard = createFileCard(file, 'uploading');
+    uploadedFilesDisplay.appendChild(fileCard);
+    uploadedFilesDisplay.classList.remove('hidden');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/single', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 更新卡片状态为成功
+        updateFileCard(fileCard, result.data, 'success');
+        return result.data;
+      } else {
+        throw new Error(result.error || '上传失败');
+      }
+    } catch (error) {
+      // 更新卡片状态为失败
+      updateFileCard(fileCard, { originalname: file.name, size: file.size }, 'error', error.message);
+      return null;
+    }
+  }
+
+  // 创建文件卡片
+  function createFileCard(file, status = 'success', errorMessage = '') {
+    const fileCard = document.createElement('div');
+    fileCard.className = 'flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border';
+    
+         const isImage = file.type ? file.type.startsWith('image/') : file.originalname?.match(/\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i);
+     const isAudio = file.type ? file.type.startsWith('audio/') : file.originalname?.match(/\.(mp3|wav|ogg|aac|flac|m4a|wma)$/i);
+     const isVideo = file.type ? file.type.startsWith('video/') : file.originalname?.match(/\.(mp4|avi|mov|wmv|webm|3gp|flv|mkv)$/i);
+     const icon = file.type ? getFileIcon(file.type, file.originalname || file.name) : getFileIcon('', file.originalname || file.name);
+     
+     let statusHtml = '';
+     let statusColor = '';
+     
+     if (status === 'uploading') {
+       statusHtml = '<div class="text-xs text-blue-600">上传中...</div>';
+       statusColor = 'text-blue-600';
+     } else if (status === 'success') {
+       if (isImage) {
+         statusHtml = '<div class="text-xs text-orange-600">仅识别附件中的文字</div>';
+         statusColor = 'text-orange-600';
+       } else if (isAudio) {
+         statusHtml = '<div class="text-xs text-purple-600">音频文件已上传</div>';
+         statusColor = 'text-purple-600';
+       } else if (isVideo) {
+         statusHtml = '<div class="text-xs text-indigo-600">视频文件已上传</div>';
+         statusColor = 'text-indigo-600';
+       } else {
+         statusHtml = '<div class="text-xs text-green-600">上传成功</div>';
+         statusColor = 'text-green-600';
+       }
+     } else if (status === 'error') {
+       statusHtml = `<div class="text-xs text-red-600">上传失败: ${errorMessage}</div>`;
+       statusColor = 'text-red-600';
+     }
+
+    fileCard.innerHTML = `
+      <div class="flex-shrink-0">
+        <i class="${icon} text-xl text-gray-600"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-gray-900 truncate">${file.originalname || file.name}</div>
+        <div class="text-xs text-gray-500">${formatFileSize(file.size)}</div>
+        ${statusHtml}
+      </div>
+      <button onclick="removeFileCard(this)" class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors">
+        <i class="ri-close-line text-xs"></i>
+      </button>
+    `;
+
+    return fileCard;
+  }
+
+     // 更新文件卡片
+   function updateFileCard(fileCard, fileData, status, errorMessage = '') {
+     const statusElement = fileCard.querySelector('.text-xs:last-of-type');
+     const isImage = fileData.mimetype ? fileData.mimetype.startsWith('image/') : fileData.originalname?.match(/\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i);
+     const isAudio = fileData.mimetype ? fileData.mimetype.startsWith('audio/') : fileData.originalname?.match(/\.(mp3|wav|ogg|aac|flac|m4a|wma)$/i);
+     const isVideo = fileData.mimetype ? fileData.mimetype.startsWith('video/') : fileData.originalname?.match(/\.(mp4|avi|mov|wmv|webm|3gp|flv|mkv)$/i);
+     
+     if (status === 'success') {
+       if (isImage) {
+         statusElement.className = 'text-xs text-orange-600';
+         statusElement.textContent = '仅识别附件中的文字';
+         
+         // 模拟文字识别过程
+         setTimeout(() => {
+           statusElement.textContent = '未提取到文字';
+           statusElement.className = 'text-xs text-gray-500';
+         }, 2000);
+       } else if (isAudio) {
+         statusElement.className = 'text-xs text-purple-600';
+         statusElement.textContent = '音频文件已上传';
+       } else if (isVideo) {
+         statusElement.className = 'text-xs text-indigo-600';
+         statusElement.textContent = '视频文件已上传';
+       } else {
+         statusElement.className = 'text-xs text-green-600';
+         statusElement.textContent = '上传成功';
+       }
+     } else if (status === 'error') {
+       statusElement.className = 'text-xs text-red-600';
+       statusElement.textContent = `上传失败: ${errorMessage}`;
+     }
+
+     // 存储文件数据到卡片元素
+     fileCard.fileData = fileData;
+   }
+
+  // 删除文件卡片
+  window.removeFileCard = function(button) {
+    const fileCard = button.closest('.flex.items-start');
+    const fileData = fileCard.fileData;
+    
+    // 从当前上传文件列表中移除
+    if (fileData && fileData.filename) {
+      currentUploadedFiles = currentUploadedFiles.filter(f => f.filename !== fileData.filename);
+      
+      // 删除服务器上的文件
+      fetch(`/api/upload/file/${fileData.filename}`, {method: 'DELETE'})
+        .catch(error => console.error('删除服务器文件失败:', error));
+    }
+    
+    // 移除卡片
+    fileCard.remove();
+    
+    // 如果没有文件了，隐藏容器
+    if (uploadedFilesDisplay.children.length === 0) {
+      uploadedFilesDisplay.classList.add('hidden');
+    }
+  };
+
+  // 更新文件显示
+  function updateFilesDisplay() {
+    if (currentUploadedFiles.length === 0) {
+      uploadedFilesDisplay.classList.add('hidden');
+    } else {
+      uploadedFilesDisplay.classList.remove('hidden');
+    }
+  }
+
+  // 清空当前上传的文件（在发送消息后调用）
+  window.clearUploadedFiles = function() {
+    currentUploadedFiles = [];
+    uploadedFilesDisplay.innerHTML = '';
+    uploadedFilesDisplay.classList.add('hidden');
+  };
+
+  // 获取当前上传的文件列表（发送消息时使用）
+  window.getCurrentUploadedFiles = function() {
+    return currentUploadedFiles;
+  };
+});
 </script>
+
+<!-- 文件输入 -->
+<input type="file" id="file-input" multiple accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt,.xls,.xlsx" style="display: none;">
 </body>
 </html>

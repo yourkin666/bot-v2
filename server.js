@@ -6,6 +6,7 @@ const chatRoutes = require('./routes/chat');
 const searchRoutes = require('./routes/search');
 const voiceRoutes = require('./routes/voice');
 const weatherRoutes = require('./routes/weather');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const PORT = config.server.port;
@@ -20,6 +21,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // 提供静态文件服务（前端页面）
 app.get('/', (req, res) => {

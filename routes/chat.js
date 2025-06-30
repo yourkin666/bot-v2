@@ -6,7 +6,7 @@ const aiService = require('../services/aiService');
 // 发送消息并获取AI回复
 router.post('/send', async (req, res) => {
   try {
-    const { message, chatId, useThinking = false, useSearch = false } = req.body;
+    const { message, chatId, useThinking = false, useSearch = false, attachedFiles = [] } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ 
@@ -15,7 +15,7 @@ router.post('/send', async (req, res) => {
       });
     }
 
-    console.log('📨 收到消息:', { message, chatId, useThinking, useSearch });
+    console.log('📨 收到消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
 
     // 获取当前聊天
     let currentChatId = chatId;
@@ -37,6 +37,16 @@ router.post('/send', async (req, res) => {
       content: message.trim()
     };
 
+    // 如果有附件，添加到用户消息中
+    if (attachedFiles && attachedFiles.length > 0) {
+      userMessage.attachments = attachedFiles.map(file => ({
+        filename: file.originalname,
+        type: file.mimetype,
+        size: file.size,
+        url: `/api/upload/file/${file.filename}`
+      }));
+    }
+
     await storage.addMessage(currentChatId, userMessage);
 
     // 获取完整的消息历史
@@ -44,7 +54,7 @@ router.post('/send', async (req, res) => {
     const messages = updatedChat.messages;
 
     // 生成AI回复
-    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch });
+    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch, files: attachedFiles });
 
     // 保存AI回复
     await storage.addMessage(currentChatId, aiReply);
@@ -219,7 +229,7 @@ router.delete('/batch/delete', async (req, res) => {
 // 流式聊天接口（可选）
 router.post('/stream', async (req, res) => {
   try {
-    const { message, chatId, useThinking = false, useSearch = false } = req.body;
+    const { message, chatId, useThinking = false, useSearch = false, attachedFiles = [] } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ 
@@ -228,7 +238,7 @@ router.post('/stream', async (req, res) => {
       });
     }
 
-    console.log('📨 收到流式消息:', { message, chatId, useThinking, useSearch });
+    console.log('📨 收到流式消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
 
     // 设置流式响应头
     res.writeHead(200, {
@@ -256,6 +266,16 @@ router.post('/stream', async (req, res) => {
       content: message.trim()
     };
 
+    // 如果有附件，添加到用户消息中
+    if (attachedFiles && attachedFiles.length > 0) {
+      userMessage.attachments = attachedFiles.map(file => ({
+        filename: file.originalname,
+        type: file.mimetype,
+        size: file.size,
+        url: `/api/upload/file/${file.filename}`
+      }));
+    }
+
     await storage.addMessage(currentChatId, userMessage);
 
     // 获取消息历史
@@ -266,7 +286,7 @@ router.post('/stream', async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'chatId', chatId: currentChatId })}\n\n`);
 
     // 首先生成AI回复以检查是否包含天气信息
-    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch });
+    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch, files: attachedFiles });
     
     // 如果包含天气信息，先发送天气数据
     if (aiReply.weather) {
@@ -297,7 +317,8 @@ router.post('/stream', async (req, res) => {
           weather: aiReply.weather,
           searchUsed: aiReply.searchUsed,
           searchQuery: aiReply.searchQuery,
-          searchResultsCount: aiReply.searchResultsCount
+          searchResultsCount: aiReply.searchResultsCount,
+          fileAnalysis: aiReply.fileAnalysis
         };
         await storage.addMessage(currentChatId, savedReply);
         
