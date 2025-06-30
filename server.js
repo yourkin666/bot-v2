@@ -31,7 +31,5 @@ app.get('/webpage', (req, res) => {
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`🚀 AI小子后端服务启动成功！`);
-  console.log(`📱 聊天界面: http://localhost:${PORT}`);
   console.log(`🌐 展示页面: http://localhost:${PORT}/webpage`);
-  console.log(`📡 API地址: http://localhost:${PORT}/api`);
 }); 
