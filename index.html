@@ -57,6 +57,9 @@ overflow: hidden;
 .chat-container {
 height: calc(100vh - 80px);
 }
+.chat-messages {
+scroll-behavior: smooth;
+}
 .message-input:focus {
 outline: none;
 }
@@ -362,6 +365,191 @@ overflow-x: auto;
 overflow-x: auto;
 overflow-y: hidden;
 }
+
+/* 数学公式容器的稳定性，防止跳动 */
+.katex-display, .katex {
+min-height: 1.2em;
+transition: none;
+}
+
+/* 优化数学公式显示 */
+.markdown-content {
+transition: none;
+}
+
+/* 数学公式渲染优化 - 彻底防闪动方案 */
+.markdown-content {
+opacity: 1 !important;
+visibility: visible !important;
+}
+
+/* 隐藏未渲染的LaTeX代码，防止闪动 */
+.markdown-content:not([data-math-rendered="true"]) {
+font-family: 'Times New Roman', serif;
+}
+
+.markdown-content:not([data-math-rendered="true"]) code {
+opacity: 0.3;
+transition: opacity 0.1s ease;
+}
+
+/* LaTeX语法高亮，让未渲染的代码看起来更接近最终效果 */
+.markdown-content:not([data-math-rendered="true"]) code:contains("$") {
+font-family: 'Times New Roman', serif;
+color: #1a1a1a;
+background: none;
+font-size: 1.1em;
+}
+
+/* 确保数学公式占位符不会造成布局跳动 */
+.katex, .katex-display {
+display: inline-block;
+vertical-align: baseline;
+}
+
+/* LaTeX代码样式 - 与渲染后的公式保持视觉一致性 */
+code:has-text($), code:has-text($$) {
+font-family: 'KaTeX_Main', 'Times New Roman', serif;
+font-size: 1.05em;
+background-color: transparent;
+color: #333;
+padding: 0;
+}
+
+/* 天气卡片优化样式 */
+.weather-card {
+backdrop-filter: blur(10px);
+border: 1px solid rgba(255, 255, 255, 0.2);
+position: relative;
+overflow: hidden;
+}
+
+.weather-card::before {
+content: '';
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(255, 255, 255, 0.1);
+opacity: 0;
+transition: opacity 0.3s ease;
+}
+
+.weather-card:hover::before {
+opacity: 1;
+}
+
+.weather-icon-animation {
+animation: float 3s ease-in-out infinite;
+transition: transform 0.3s ease;
+}
+
+@keyframes float {
+0%, 100% { transform: translateY(0px) rotate(0deg); }
+33% { transform: translateY(-5px) rotate(1deg); }
+66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+/* 天气卡片悬浮效果 */
+.weather-card:hover .weather-icon-animation {
+animation-duration: 1.5s;
+transform: scale(1.1);
+}
+
+/* 加载动画优化 */
+.loading-animation {
+animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+0%, 100% { opacity: 1; }
+50% { opacity: 0.5; }
+}
+
+/* 消息入场动画 */
+.message-enter {
+animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+from {
+opacity: 0;
+transform: translateY(20px);
+}
+to {
+opacity: 1;
+transform: translateY(0);
+}
+}
+
+/* 光标闪烁优化 */
+.typing-cursor {
+animation: blink 1s infinite;
+font-weight: bold;
+}
+
+@keyframes blink {
+0%, 50% { opacity: 1; }
+51%, 100% { opacity: 0; }
+}
+
+/* 滚动条美化 */
+.chat-messages::-webkit-scrollbar {
+width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+background: #f8fafc;
+border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+background: #cbd5e1;
+border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+background: #94a3b8;
+}
+
+/* 按钮悬浮效果优化 */
+#send-button, #voice-button {
+transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#send-button:hover, #voice-button:hover {
+transform: scale(1.1);
+}
+
+/* 文本选择样式 */
+::selection {
+background-color: #3B82F6;
+color: white;
+}
+
+/* 天气详情项的悬浮效果 */
+.weather-card .group:hover {
+transform: translateX(2px);
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+.weather-card {
+margin-left: -1rem;
+margin-right: -1rem;
+border-radius: 0.75rem;
+}
+
+.weather-card .grid {
+grid-template-columns: 1fr;
+gap: 0.5rem;
+}
+
+.weather-card .text-5xl {
+font-size: 3rem;
+}
+}
 </style>
 </head>
 <body class="bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-white via-sky-50 to-blue-50/30 font-sans text-gray-900">
@@ -410,8 +598,8 @@ overflow-y: hidden;
 </div>
 </div>
 <!-- 底部功能区 -->
-<div class="p-3 border-t border-gray-100">
-<!-- 个人信息按钮已移除 -->
+<div class="p-3 border-t border-gray-100 space-y-2">
+<!-- 功能区域预留，可以添加其他工具 -->
 </div>
 </div>
 <!-- 中间聊天区域 -->
@@ -429,7 +617,7 @@ overflow-y: hidden;
 </div>
 </div>
 			<h2 class="text-xl font-medium mb-2">我是 <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent font-bold">AI小子</span>，很高兴见到你！</h2>
-<p class="text-gray-500 text-center max-w-md mb-4">我可以帮你写代码、回答问题、生成内容，甚至可以进行深度思考。请把你的任务交给我吧～</p>
+			<p class="text-gray-500 text-center max-w-md mb-4">我可以帮你写代码、回答问题、生成内容。请把你的任务交给我吧～</p>
 </div>
 <!-- 聊天消息容器 (动态生成内容) -->
 <div id="chat-content" class="hidden space-y-6">
@@ -446,12 +634,7 @@ overflow-y: hidden;
 <!-- 输入区域 -->
 <div class="p-4">
 <div class="flex items-center gap-2 mb-3">
-		<button id="thinking-toggle" class="toggle-button bg-blue-50 text-blue-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-blue-100 transition-colors">
-			<div class="w-4 h-4 flex items-center justify-center">
-				<i class="ri-brain-line"></i>
-			</div>
-			<span>深度思考 (R1)</span>
-		</button>
+
 		<button id="search-toggle" class="toggle-button bg-gray-50 text-gray-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-gray-100 transition-colors">
 			<div class="w-4 h-4 flex items-center justify-center">
 				<i class="ri-search-line"></i>
@@ -459,79 +642,40 @@ overflow-y: hidden;
 			<span>联网搜索</span>
 		</button>
 </div>
+
+<!-- 上传文件卡片显示区域 -->
+<div id="uploaded-files-display" class="space-y-2 mb-4 hidden">
+</div>
+
 <div class="relative">
 <textarea
 class="message-input w-full bg-gray-50 rounded-lg pl-4 pr-12 py-3 resize-none border-none h-12 text-gray-800 focus:bg-gray-100 transition-colors"
 				placeholder="给 AI小子 发送消息"
 rows="1"
 ></textarea>
-<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
-<i class="ri-attachment-2"></i>
-</button>
-<button id="send-button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary">
-<i class="ri-send-plane-fill"></i>
-</button>
-</div>
+				<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+					<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700" title="上传文件">
+						<i class="ri-attachment-2"></i>
+					</button>
+					<button id="voice-button" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary transition-colors" title="点击录音">
+						<i class="ri-mic-line"></i>
+					</button>
+					<button id="send-button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary">
+						<i class="ri-send-plane-fill"></i>
+					</button>
+				</div>
 </div>
 </div>
 </div>
 </div>
 <script id="chat-interaction">
-// Markdown渲染函数
+// 简化的Markdown渲染函数 - 直接处理，让KaTeX后续渲染数学公式
 function renderMarkdown(text) {
 if (typeof marked === 'undefined') {
 return text.replace(/\n/g, '<br>');
 }
 
 try {
-// 保护数学公式不被Markdown处理
-const mathPlaceholders = [];
-let processedText = text;
-
-// 先提取并保护块级数学公式 $$...$$
-processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'block'
-});
-return placeholder;
-});
-
-// 再提取并保护行内数学公式 $...$
-processedText = processedText.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
-const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'inline'
-});
-return placeholder;
-});
-
-// 保护 \(...\) 和 \[...\] 格式
-processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
-const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'inline'
-});
-return placeholder;
-});
-
-processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
-const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'block'
-});
-return placeholder;
-});
-
 // 配置marked选项
 marked.setOptions({
 breaks: true,
@@ -539,13 +683,9 @@ gfm: true,
 sanitize: false
 });
 
-// 渲染Markdown
-let rendered = marked.parse(processedText);
-
-// 恢复数学公式
-mathPlaceholders.forEach(item => {
-rendered = rendered.replace(item.placeholder, item.original);
-});
+// 直接渲染Markdown，不进行复杂的占位符处理
+// 让KaTeX在后续步骤中直接处理数学公式
+let rendered = marked.parse(text);
 
 // 使用DOMPurify清理HTML以防止XSS攻击
 rendered = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rendered, {
@@ -553,11 +693,30 @@ ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac
 ADD_ATTR: ['class', 'style']
 }) : rendered;
 
+// 清理任何可能的占位符残留
+rendered = cleanupMathPlaceholders(rendered);
+
 return rendered;
 } catch (error) {
 console.error('Markdown渲染错误:', error);
 return text.replace(/\n/g, '<br>');
 }
+}
+
+// 清理数学公式占位符的辅助函数
+function cleanupMathPlaceholders(text) {
+// 移除所有形如 MATH_BLOCK_N 或 MATH_INLINE_N 的占位符
+text = text.replace(/MATH_(BLOCK|INLINE)_\d+/g, '[数学公式]');
+// 移除所有形如 __MATH_BLOCK_N__ 或 __MATH_INLINE_N__ 的占位符
+text = text.replace(/__MATH_(BLOCK|INLINE)_\d+__/g, '[数学公式]');
+return text;
+}
+
+// 这些函数已经不再需要，因为我们简化了渲染逻辑
+
+// 转义正则表达式特殊字符
+function escapeRegExp(string) {
+return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // 数学公式渲染配置
@@ -573,46 +732,86 @@ errorColor: '#cc0000',
 strict: false
 };
 
-// 等待KaTeX加载完成的函数
+// 等待KaTeX加载完成的函数 - 优化版本
 function waitForKaTeX() {
-return new Promise((resolve) => {
+return new Promise((resolve, reject) => {
 if (typeof window.renderMathInElement === 'function') {
 resolve();
-} else {
+return;
+}
+
+let attempts = 0;
+const maxAttempts = 30; // 3秒超时，减少等待时间
 const checkKaTeX = setInterval(() => {
+attempts++;
+
 if (typeof window.renderMathInElement === 'function') {
 clearInterval(checkKaTeX);
 resolve();
+} else if (attempts >= maxAttempts) {
+clearInterval(checkKaTeX);
+reject(new Error('KaTeX加载超时'));
 }
 }, 100);
-}
 });
 }
 
-// 安全渲染数学公式
+// 安全渲染数学公式 - 快速无闪动版本
 async function renderMathSafely(element) {
-try {
-await waitForKaTeX();
-if (element && typeof window.renderMathInElement === 'function') {
-window.renderMathInElement(element, mathConfig);
+if (!element || typeof window.renderMathInElement !== 'function') {
+return Promise.resolve();
 }
+
+// 如果正在渲染，等待完成
+if (element.dataset.mathRendering === 'true') {
+return new Promise(resolve => {
+const checkInterval = setInterval(() => {
+if (element.dataset.mathRendering !== 'true') {
+clearInterval(checkInterval);
+resolve();
+}
+}, 10);
+});
+}
+
+try {
+// 标记正在渲染
+element.dataset.mathRendering = 'true';
+
+// 同步渲染数学公式
+window.renderMathInElement(element, mathConfig);
+
+// 标记渲染完成
+element.dataset.mathRendered = 'true';
+delete element.dataset.mathRendering;
+
+return Promise.resolve();
 } catch (error) {
 console.error('数学公式渲染错误:', error);
+delete element.dataset.mathRendering;
+return Promise.resolve();
 }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-const messageInput = document.querySelector('.message-input');
-const sendButton = document.getElementById('send-button');
-const welcomeMessage = document.getElementById('welcome-message');
-const chatContent = document.getElementById('chat-content');
-const newChatButton = document.getElementById('new-chat-button');
-const thinkingToggle = document.getElementById('thinking-toggle');
-const searchToggle = document.getElementById('search-toggle');
+	const messageInput = document.querySelector('.message-input');
+	const sendButton = document.getElementById('send-button');
+	const voiceButton = document.getElementById('voice-button');
+	const welcomeMessage = document.getElementById('welcome-message');
+	const chatContent = document.getElementById('chat-content');
+	const newChatButton = document.getElementById('new-chat-button');
+	const searchToggle = document.getElementById('search-toggle');
 
 // 页面加载时重置状态
 window.isAIResponding = false;
 disableUserInput(false);
+
+// 延迟检查数学公式库是否加载完成
+setTimeout(() => {
+if (typeof window.renderMathInElement !== 'function') {
+console.warn('数学公式渲染库未能正常加载');
+}
+}, 2000);
 
 // 页面卸载前清理状态
 window.addEventListener('beforeunload', function() {
@@ -633,11 +832,25 @@ window.resetAIState = function() {
   interruptAIResponse();
   showToast('AI状态已重置', 'success');
 };
-  // 按钮切换功能
-  thinkingToggle.addEventListener('click', function() {
-    this.classList.toggle('active');
+
+// 调试功能：手动渲染数学公式（在控制台中调用 debugRenderMath()）
+window.debugRenderMath = function() {
+  console.log('开始调试数学公式渲染...');
+  console.log('KaTeX状态:', typeof window.katex);
+  console.log('renderMathInElement状态:', typeof window.renderMathInElement);
+  
+  // 查找所有AI消息并尝试渲染
+  const aiMessages = document.querySelectorAll('.ai-content');
+  console.log('找到AI消息数量:', aiMessages.length);
+  
+  aiMessages.forEach((element, index) => {
+    console.log(`渲染消息 ${index + 1}:`, element.innerHTML);
+    renderMathSafely(element);
   });
   
+  return '数学公式调试完成，查看控制台输出';
+};
+  // 按钮切换功能
   searchToggle.addEventListener('click', function() {
     this.classList.toggle('active');
   });
@@ -692,10 +905,126 @@ sendButton.click();
 }
 });
 
+// 录音按钮事件监听
+voiceButton.addEventListener('click', function() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+
 // API 交互函数
 window.currentChatId = null;
 window.isAIResponding = false; // 添加AI响应状态标记
 window.currentStreamController = null; // 当前流式响应控制器
+
+// 录音功能变量
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordingStartTime = null;
+let recognition = null; // Web Speech API
+
+// 平滑滚动到底部函数
+function smoothScrollToBottom() {
+const chatContainer = document.getElementById('chat-content');
+if (!chatContainer) return;
+
+// 使用 scrollIntoView 实现平滑滚动
+const lastMessage = chatContainer.lastElementChild;
+if (lastMessage) {
+    lastMessage.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'end',
+        inline: 'nearest'
+    });
+} else {
+    // 如果没有消息，直接滚动到底部
+    chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: 'smooth'
+    });
+}
+}
+
+// 强制滚动到底部（无动画，用于初始化等场景）
+function forceScrollToBottom() {
+const chatContainer = document.getElementById('chat-content');
+if (chatContainer) {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+}
+
+// 检查是否需要滚动（用于优化性能）
+function shouldAutoScroll() {
+const chatContainer = document.getElementById('chat-content');
+if (!chatContainer) return false;
+
+// 如果用户滚动到接近底部（容差50px），则认为需要自动滚动
+const isNearBottom = chatContainer.scrollTop + chatContainer.clientHeight >= chatContainer.scrollHeight - 50;
+return isNearBottom;
+}
+
+// 智能滚动：只有当用户在底部附近时才自动滚动
+function smartScrollToBottom() {
+if (shouldAutoScroll()) {
+    smoothScrollToBottom();
+} else {
+    // 如果用户不在底部，显示"回到底部"按钮
+    showScrollToBottomButton();
+}
+}
+
+// 显示回到底部按钮
+function showScrollToBottomButton() {
+let scrollButton = document.getElementById('scroll-to-bottom');
+
+if (!scrollButton) {
+  scrollButton = document.createElement('button');
+  scrollButton.id = 'scroll-to-bottom';
+  scrollButton.className = 'fixed bottom-20 right-6 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform translate-y-0 hover:-translate-y-1 z-50';
+  scrollButton.innerHTML = '<i class="ri-arrow-down-line text-lg"></i>';
+  scrollButton.title = '回到底部';
+  
+  scrollButton.addEventListener('click', () => {
+    smoothScrollToBottom();
+    hideScrollToBottomButton();
+  });
+  
+  document.body.appendChild(scrollButton);
+  
+  // 入场动画
+  requestAnimationFrame(() => {
+    scrollButton.style.opacity = '0';
+    scrollButton.style.transform = 'translateY(20px)';
+    scrollButton.style.transition = 'all 0.3s ease-out';
+    
+    requestAnimationFrame(() => {
+      scrollButton.style.opacity = '1';
+      scrollButton.style.transform = 'translateY(0)';
+    });
+  });
+}
+
+// 自动隐藏定时器
+clearTimeout(scrollButton.hideTimer);
+scrollButton.hideTimer = setTimeout(hideScrollToBottomButton, 3000);
+}
+
+// 隐藏回到底部按钮
+function hideScrollToBottomButton() {
+const scrollButton = document.getElementById('scroll-to-bottom');
+if (scrollButton) {
+  scrollButton.style.opacity = '0';
+  scrollButton.style.transform = 'translateY(20px)';
+  setTimeout(() => {
+    if (scrollButton.parentNode) {
+      scrollButton.parentNode.removeChild(scrollButton);
+    }
+  }, 300);
+}
+}
 
 // 中断AI响应函数
 function interruptAIResponse() {
@@ -706,6 +1035,179 @@ if (window.currentStreamController) {
 }
 window.isAIResponding = false;
 disableUserInput(false);
+}
+
+// 录音功能函数 - 使用Web Speech API
+function initializeSpeechRecognition() {
+  try {
+    // 检查浏览器支持
+    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+      console.warn('浏览器不支持语音识别');
+      return false;
+    }
+    
+    // 创建语音识别实例
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    // 配置语音识别
+    recognition.continuous = false;  // 不连续识别
+    recognition.interimResults = false;  // 不显示中间结果
+    recognition.lang = 'zh-CN';  // 默认中文，也可以自动识别
+    recognition.maxAlternatives = 1;  // 最多返回1个结果
+    
+    // 监听识别结果
+    recognition.onresult = function(event) {
+      const result = event.results[0];
+      if (result.isFinal) {
+        const recognizedText = result[0].transcript;
+        console.log('🎤 语音识别结果:', recognizedText);
+        handleSpeechResult(recognizedText);
+      }
+    };
+    
+    // 监听识别结束
+    recognition.onend = function() {
+      console.log('🎤 语音识别结束');
+      isRecording = false;
+      updateVoiceButtonState(false);
+    };
+    
+    // 监听识别错误
+    recognition.onerror = function(event) {
+      console.error('语音识别错误:', event.error);
+      isRecording = false;
+      updateVoiceButtonState(false);
+      
+      let errorMessage = '语音识别失败';
+      switch(event.error) {
+        case 'no-speech':
+          errorMessage = '没有检测到语音，请重试';
+          break;
+        case 'audio-capture':
+          errorMessage = '无法访问麦克风';
+          break;
+        case 'not-allowed':
+          errorMessage = '麦克风权限被拒绝';
+          break;
+        case 'network':
+          errorMessage = '网络错误，请检查连接';
+          break;
+        default:
+          errorMessage = `语音识别失败: ${event.error}`;
+      }
+      showToast(errorMessage, 'error');
+    };
+    
+    // 监听开始识别
+    recognition.onstart = function() {
+      console.log('🎤 开始语音识别');
+      isRecording = true;
+      updateVoiceButtonState(true);
+      showToast('请说话，正在听取您的语音...', 'info');
+    };
+    
+    return true;
+  } catch (error) {
+    console.error('初始化语音识别失败:', error);
+    return false;
+  }
+}
+
+function startRecording() {
+  if (isRecording) {
+    stopRecording();
+    return;
+  }
+  
+  if (!recognition) {
+    const initialized = initializeSpeechRecognition();
+    if (!initialized) {
+      showToast('您的浏览器不支持语音识别功能', 'error');
+      return;
+    }
+  }
+  
+  try {
+    console.log('🎤 启动语音识别');
+    recognition.start();
+  } catch (error) {
+    console.error('启动语音识别失败:', error);
+    showToast('语音识别启动失败，请重试', 'error');
+  }
+}
+
+function stopRecording() {
+  if (recognition && isRecording) {
+    console.log('🎤 停止语音识别');
+    recognition.stop();
+  }
+}
+
+function updateVoiceButtonState(recording) {
+  const icon = voiceButton.querySelector('i');
+  
+  if (recording) {
+    icon.className = 'ri-stop-circle-fill';
+    voiceButton.classList.add('text-red-500', 'animate-pulse');
+    voiceButton.classList.remove('text-gray-500');
+    voiceButton.title = '点击停止录音';
+  } else {
+    icon.className = 'ri-mic-line';
+    voiceButton.classList.remove('text-red-500', 'animate-pulse');
+    voiceButton.classList.add('text-gray-500');
+    voiceButton.title = '点击录音';
+  }
+}
+
+async function handleSpeechResult(recognizedText) {
+  try {
+    console.log('🎤 处理识别结果:', recognizedText);
+    
+    // 检查是否是中文
+    const isChinese = /[\u4e00-\u9fff]/.test(recognizedText);
+    
+    if (isChinese) {
+      // 如果是中文，直接使用
+      showToast(`识别成功: ${recognizedText}`, 'success');
+      messageInput.value = recognizedText;
+    } else {
+      // 如果不是中文，调用翻译API
+      showToast('正在翻译为中文...', 'info');
+      
+      const response = await fetch('/api/voice/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: recognizedText
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const translatedText = result.data.translatedText;
+        showToast(`识别并翻译成功: ${recognizedText} → ${translatedText}`, 'success');
+        messageInput.value = translatedText;
+      } else {
+        showToast(`识别成功，翻译失败: ${recognizedText}`, 'warning');
+        messageInput.value = recognizedText;
+      }
+    }
+    
+    // 自动调整输入框高度
+    messageInput.style.height = 'auto';
+    messageInput.style.height = (messageInput.scrollHeight > 48) ? messageInput.scrollHeight + 'px' : '48px';
+    
+    // 聚焦到输入框
+    messageInput.focus();
+    
+  } catch (error) {
+    console.error('处理语音结果时出错:', error);
+    showToast('语音处理失败，请重试', 'error');
+  }
 }
 
 async function sendMessageToAPI(message) {
@@ -731,8 +1233,11 @@ const responseTimeout = setTimeout(() => {
   }
 }, 120000); // 2分钟超时
 
-// 显示用户消息
-displayUserMessage(message);
+// 获取当前上传的文件
+const uploadedFiles = window.getCurrentUploadedFiles ? window.getCurrentUploadedFiles() : [];
+
+// 显示用户消息（包含文件信息）
+displayUserMessage(message, uploadedFiles);
 
 // 显示AI消息占位符
 const aiMessageElement = showTypingMessage();
@@ -746,8 +1251,9 @@ headers: {
 body: JSON.stringify({
 message: message,
       chatId: window.currentChatId,
-useThinking: thinkingToggle.classList.contains('active'),
-useSearch: searchToggle.classList.contains('active')
+useThinking: false,
+useSearch: searchToggle.classList.contains('active'),
+files: uploadedFiles // 包含文件信息
 }),
 signal: window.currentStreamController.signal // 添加中断信号
 });
@@ -783,13 +1289,67 @@ if (data.type === 'chatId') {
                 loadChatHistory();
               }, 500);
             }
-} else if (data.type === 'content') {
+} else if (data.type === 'weather') {
+            // 处理天气数据 - 立即显示天气卡片
+            window.currentWeatherData = data.weather;
+            console.log('🌤️ 收到天气数据:', data.weather);
+            
+            // 确保天气卡片能正确显示的多重保障
+            const tryInsertWeatherCard = (attempt = 0) => {
+              if (data.weather && aiMessageElement) {
+                // 查找最近的AI消息容器
+                const aiMessageContainer = aiMessageElement.closest('.ai-message');
+                if (aiMessageContainer) {
+                  insertWeatherCard(aiMessageContainer, data.weather);
+                  console.log('🌤️ 天气卡片已立即显示 (尝试次数:', attempt + 1, ')');
+                  // 滚动到底部以显示天气卡片
+                  setTimeout(() => smartScrollToBottom(), 100);
+                } else if (attempt < 3) {
+                  // 如果容器还没准备好，短暂延迟后重试
+                  console.log('⏳ AI消息容器还未准备好，50ms后重试...');
+                  setTimeout(() => tryInsertWeatherCard(attempt + 1), 50);
+                } else {
+                  console.warn('⚠️ 多次尝试后仍未找到AI消息容器，天气卡片显示失败');
+                }
+              } else if (attempt < 3) {
+                console.log('⏳ aiMessageElement还未准备好，50ms后重试...');
+                setTimeout(() => tryInsertWeatherCard(attempt + 1), 50);
+              } else {
+                console.warn('⚠️ 多次尝试后aiMessageElement仍未准备好');
+              }
+            };
+            
+            // 立即尝试插入，如果失败会自动重试
+            tryInsertWeatherCard();
+          } else if (data.type === 'content') {
 aiContent += data.content;
-// 实现打字机效果
-typeWriterEffect(aiMessageElement, aiContent);
+// 实现打字机效果（防抖优化）
+typeWriterEffectDebounced(aiMessageElement, aiContent);
           } else if (data.type === 'end') {
-            // 流式输出结束，清理光标
+            // 流式输出结束
+            // 天气卡片已经在收到天气数据时立即显示了，这里只需要清理临时数据
+            if (window.currentWeatherData) {
+              window.currentWeatherData = null; // 清理临时数据
+              console.log('🌤️ 清理临时天气数据');
+            }
+            
+            // 确保最终渲染数学公式
+            if (typeWriterDebounceTimer) {
+              clearTimeout(typeWriterDebounceTimer);
+            }
+            // 最终渲染数学公式
+            if (aiContent.includes('$') || aiContent.includes('\\(') || aiContent.includes('\\[')) {
+              await renderMathSafely(aiMessageElement);
+            }
+            
+            // 清理光标
             finishTyping(aiMessageElement);
+            
+            // 清空上传的文件
+            if (window.clearUploadedFiles) {
+              window.clearUploadedFiles();
+            }
+            
             // 重置响应状态，允许用户发送新消息
             window.isAIResponding = false;
             disableUserInput(false);
@@ -829,12 +1389,65 @@ clearTimeout(responseTimeout);
 }
 }
 
-function displayUserMessage(message) {
+// 获取文件图标（用于用户消息显示）
+function getFileIconForDisplay(mimetype, filename) {
+  if (mimetype && mimetype.startsWith('image/')) {
+    return 'ri-image-line';
+  } else if (mimetype && mimetype.startsWith('audio/')) {
+    return 'ri-music-line';
+  } else if (mimetype && mimetype.startsWith('video/')) {
+    return 'ri-video-line';
+  } else if (mimetype === 'application/pdf') {
+    return 'ri-file-pdf-line';
+  } else if (mimetype && (mimetype.includes('word') || filename.endsWith('.doc') || filename.endsWith('.docx'))) {
+    return 'ri-file-word-line';
+  } else if (mimetype && (mimetype.includes('excel') || filename.endsWith('.xls') || filename.endsWith('.xlsx'))) {
+    return 'ri-file-excel-line';
+  } else if (mimetype && mimetype.startsWith('text/')) {
+    return 'ri-file-text-line';
+  } else {
+    return 'ri-file-line';
+  }
+}
+
+function displayUserMessage(message, files = []) {
 const chatContainer = document.getElementById('chat-content');
 const now = new Date().toLocaleString('zh-CN');
 
 // 渲染Markdown格式的用户消息
 const renderedMessage = renderMarkdown(message);
+
+// 生成文件显示HTML
+let filesHTML = '';
+if (files && files.length > 0) {
+  filesHTML = `
+    <div class="mb-3 space-y-2">
+      ${files.map(file => {
+        const isImage = file.mimetype && file.mimetype.startsWith('image/');
+        const isAudio = file.mimetype && file.mimetype.startsWith('audio/');
+        const isVideo = file.mimetype && file.mimetype.startsWith('video/');
+        const icon = getFileIconForDisplay(file.mimetype, file.originalname);
+        
+        let statusText = '';
+        if (isImage) {
+          statusText = '<span class="text-xs text-orange-600 ml-2">已识别附件中的文字</span>';
+        } else if (isAudio) {
+          statusText = '<span class="text-xs text-purple-600 ml-2">音频文件</span>';
+        } else if (isVideo) {
+          statusText = '<span class="text-xs text-indigo-600 ml-2">视频文件</span>';
+        }
+        
+        return `
+          <div class="flex items-center space-x-2 p-2 bg-white bg-opacity-50 rounded border">
+            <i class="${icon} text-blue-500"></i>
+            <span class="text-sm text-gray-700">${file.originalname}</span>
+            ${statusText}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
 
 const userHTML = `
 <div class="flex justify-end mb-4">
@@ -844,6 +1457,7 @@ const userHTML = `
 </div>
 <div class="relative group">
 <div class="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-lg py-3 px-4 text-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 markdown-content">
+${filesHTML}
 ${renderedMessage}
 </div>
 </div>
@@ -859,7 +1473,8 @@ if (newMessage) {
 renderMathSafely(newMessage);
 }
 
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 }
 
 function showTypingMessage() {
@@ -882,7 +1497,8 @@ const typingHTML = `
 `;
 
 chatContainer.insertAdjacentHTML('beforeend', typingHTML);
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 
 // 添加光标闪烁效果（使用CSS动画）
 const cursor = chatContainer.querySelector('.ai-message:last-child .typing-cursor');
@@ -892,17 +1508,45 @@ const messageElement = chatContainer.querySelector('.ai-message:last-child .ai-c
 return messageElement;
 }
 
-function typeWriterEffect(element, fullText) {
-// 渲染Markdown并更新内容
+// 防抖版本的打字机效果 - 极简防闪动版本
+let typeWriterDebounceTimer = null;
+
+function typeWriterEffectDebounced(element, fullText) {
+// 清除之前的防抖定时器
+if (typeWriterDebounceTimer) {
+clearTimeout(typeWriterDebounceTimer);
+}
+
+// 立即更新内容（不管是否有数学公式）
 const renderedText = renderMarkdown(fullText);
 element.innerHTML = renderedText;
 
-// 渲染数学公式
-renderMathSafely(element);
+// 检测是否有数学公式需要渲染
+const hasMath = fullText.includes('$') || fullText.includes('\\(') || fullText.includes('\\[');
 
-// 滚动到底部
-const chatContainer = document.getElementById('chat-content');
-chatContainer.scrollTop = chatContainer.scrollHeight;
+if (hasMath) {
+// 立即渲染数学公式，不使用防抖
+renderMathSafely(element);
+}
+
+// 立即滚动
+setTimeout(() => smartScrollToBottom(), 10);
+}
+
+async function typeWriterEffect(element, fullText) {
+// 先渲染Markdown内容
+const renderedText = renderMarkdown(fullText);
+element.innerHTML = renderedText;
+
+// 直接渲染数学公式，但使用改进的renderMathSafely
+try {
+await renderMathSafely(element);
+} catch (error) {
+console.warn('数学公式渲染失败:', error);
+}
+
+// 使用智能滚动：只有当用户在底部附近时才自动滚动
+setTimeout(() => smartScrollToBottom(), 50);
 }
 
 function finishTyping(element) {
@@ -911,6 +1555,11 @@ const cursor = element.parentElement.querySelector('.typing-cursor');
 if (cursor) {
 cursor.style.display = 'none';
 }
+
+// 完成打字后滚动到底部（数学公式已在typeWriterEffect中渲染）
+setTimeout(() => {
+    smoothScrollToBottom();
+}, 100);
 }
 
 // 显示中断提示
@@ -968,7 +1617,6 @@ if (navigator.vibrate) {
 function disableUserInput(disabled) {
 const messageInput = document.querySelector('.message-input');
 const sendButton = document.getElementById('send-button'); // 修正：使用ID选择器
-const thinkingToggle = document.getElementById('thinking-toggle');
 const searchToggle = document.getElementById('search-toggle');
 
 if (disabled) {
@@ -991,9 +1639,6 @@ if (disabled) {
   }
   
   // 切换按钮保持可用但添加提示
-  if (thinkingToggle) {
-    thinkingToggle.title = 'AI响应中，新消息生效';
-  }
   if (searchToggle) {
     searchToggle.title = 'AI响应中，新消息生效';
   }
@@ -1017,9 +1662,6 @@ if (disabled) {
   }
   
   // 恢复切换按钮提示
-  if (thinkingToggle) {
-    thinkingToggle.title = '开启思考过程';
-  }
   if (searchToggle) {
     searchToggle.title = '开启联网搜索';
   }
@@ -1050,7 +1692,8 @@ const errorHTML = `
 </div>
 `;
 chatContainer.insertAdjacentHTML('beforeend', errorHTML);
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 }
 
 function bindThinkingToggle() {
@@ -1280,22 +1923,55 @@ try {
 }
 }
 
-// 显示聊天消息
+// 显示聊天消息 - 优化版本，减少重复渲染
 function displayChatMessages(messages) {
 const chatContent = document.getElementById('chat-content');
 chatContent.innerHTML = '';
+
+// 标记正在加载历史消息
+window.isLoadingHistory = true;
 
 messages.forEach(message => {
   if (message.role === 'user') {
     displayUserMessage(message.content);
   } else if (message.role === 'assistant') {
-    displayAssistantMessage(message.content, message.thinking, message.searchUsed, message.searchResultsCount);
+    displayAssistantMessage(message.content, message.thinking, message.searchUsed, message.searchResultsCount, message.weather);
   }
 });
+
+// 标记历史消息加载完成
+window.isLoadingHistory = false;
+
+// 批量渲染所有未渲染的数学公式
+setTimeout(() => {
+    const mathElements = chatContent.querySelectorAll('.markdown-content');
+    let pendingRenders = 0;
+    
+    mathElements.forEach(element => {
+      // 只渲染未处理过的元素
+      if (!element.dataset.mathRendered && !element.dataset.mathRendering) {
+        pendingRenders++;
+        renderMathSafely(element).then(() => {
+          pendingRenders--;
+          // 所有数学公式渲染完成后滚动到底部
+          if (pendingRenders === 0) {
+            setTimeout(() => smoothScrollToBottom(), 100);
+          }
+        }).catch(() => {
+          pendingRenders--;
+        });
+      }
+    });
+    
+    // 如果没有需要渲染的公式，直接滚动
+    if (pendingRenders === 0) {
+      setTimeout(() => smoothScrollToBottom(), 100);
+    }
+}, 100);
 }
 
 // 显示助手消息
-function displayAssistantMessage(content, thinking, searchUsed, searchResultsCount) {
+function displayAssistantMessage(content, thinking, searchUsed, searchResultsCount, weather) {
 const chatContainer = document.getElementById('chat-content');
 const now = new Date().toLocaleString('zh-CN');
 
@@ -1328,6 +2004,37 @@ if (searchUsed) {
   `;
 }
 
+// 天气卡片HTML
+let weatherHTML = '';
+if (weather && weather.type === 'weather_card') {
+  const { city, temperature, description, details } = weather.data;
+  const weatherIcon = getWeatherIcon(description);
+  
+  weatherHTML = `
+    <div class="weather-card mb-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-xl p-4 shadow-lg">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-lg font-medium">${city}</h3>
+          <p class="text-2xl font-light">${temperature}°C</p>
+          <p class="text-sm opacity-90">${description}</p>
+        </div>
+        <div class="text-4xl opacity-90">
+          <i class="${weatherIcon}"></i>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/20">
+        ${details.map(detail => `
+          <div class="flex items-center gap-2">
+            <i class="${getDetailIcon(detail.icon)} text-sm opacity-70"></i>
+            <span class="text-sm opacity-90">${detail.label}</span>
+            <span class="text-sm font-medium ml-auto">${detail.value}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 const assistantHTML = `
   <div class="flex justify-start ai-message">
     <div class="max-w-3xl">
@@ -1337,6 +2044,7 @@ const assistantHTML = `
       </div>
       ${thinkingHTML}
       ${searchHTML}
+      ${weatherHTML}
       <div class="bg-[#F7F8FA] rounded-lg py-3 px-4 text-gray-800 markdown-content">
         ${renderedMessage}
       </div>
@@ -1352,10 +2060,152 @@ if (newMessage) {
   renderMathSafely(newMessage);
 }
 
+// 只有实时消息才需要立即滚动
+const isLiveMessage = !window.isLoadingHistory;
+if (isLiveMessage) {
+  smoothScrollToBottom();
+}
+
 // 绑定思考过程切换事件
 bindThinkingToggle();
+}
 
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 获取天气图标
+function getWeatherIcon(description) {
+const iconMap = {
+  '晴': 'ri-sun-line',
+  '晴朗': 'ri-sun-line',
+  '多云': 'ri-cloudy-line',
+  '阴': 'ri-cloudy-2-line',
+  '雨': 'ri-rainy-line',
+  '小雨': 'ri-drizzle-line',
+  '大雨': 'ri-heavy-showers-line',
+  '雪': 'ri-snowy-line',
+  '雾': 'ri-mist-line',
+  '霾': 'ri-haze-2-line'
+};
+
+for (const [key, icon] of Object.entries(iconMap)) {
+  if (description.includes(key)) {
+    return icon;
+  }
+}
+
+return 'ri-sun-line'; // 默认图标
+}
+
+// 获取天气详情图标
+function getDetailIcon(iconType) {
+const iconMap = {
+  'temperature': 'ri-temp-hot-line',
+  'water': 'ri-water-percent-line',
+  'wind': 'ri-windy-line',
+  'leaf': 'ri-leaf-line',
+  'eye': 'ri-eye-line'
+};
+
+return iconMap[iconType] || 'ri-information-line';
+}
+
+// 插入天气卡片到消息中（优化版）
+function insertWeatherCard(messageContainer, weatherData) {
+  if (!weatherData || weatherData.type !== 'weather_card') {
+    console.warn('⚠️ 无效的天气数据:', weatherData);
+    return;
+  }
+
+  // 检查是否已经插入过天气卡片
+  if (messageContainer.querySelector('.weather-card')) {
+    console.log('🌤️ 天气卡片已存在，跳过重复插入');
+    return;
+  }
+
+  const { city, temperature, description, details, meta } = weatherData.data;
+  const weatherIcon = getWeatherIcon(description);
+  const gradientClass = getWeatherGradient(description);
+  
+  const weatherHTML = `
+    <div class="weather-card mb-3 ${gradientClass} text-white rounded-xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-lg font-medium">${city}</h3>
+            <span class="text-xs bg-white/20 px-2 py-1 rounded-full">实时</span>
+          </div>
+          <p class="text-3xl font-light mb-1">${temperature}°C</p>
+          <p class="text-sm opacity-90 flex items-center gap-1">
+            <i class="${weatherIcon} text-lg"></i>
+            ${description}
+          </p>
+        </div>
+        <div class="text-5xl opacity-80 weather-icon-animation">
+          <i class="${weatherIcon}"></i>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/20">
+        ${details.map(detail => `
+          <div class="flex items-center gap-2 group hover:bg-white/10 p-2 rounded-lg transition-colors">
+            <i class="${getDetailIcon(detail.icon)} text-sm opacity-70 group-hover:opacity-90 transition-opacity"></i>
+            <div class="flex-1">
+              <span class="text-xs opacity-70 block">${detail.label}</span>
+              <span class="text-sm font-medium ${detail.color || ''}">${detail.value}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      ${meta ? `
+        <div class="mt-3 pt-3 border-t border-white/20 flex justify-between items-center text-xs opacity-70">
+          <span>更新时间: ${meta.updateTime}</span>
+          <span>数据来源: ${meta.source === 'web_search' ? '联网搜索' : meta.source === 'mock_api' ? '模拟数据' : '实时数据'}</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  // 查找插入位置：优先插入到消息内容之前，如果没有则插入到消息头部
+  const contentDiv = messageContainer.querySelector('.markdown-content');
+  if (contentDiv) {
+    console.log('🌤️ 在markdown-content之前插入天气卡片');
+    contentDiv.insertAdjacentHTML('beforebegin', weatherHTML);
+  } else {
+    // 备用方案：直接插入到消息容器的顶部
+    console.log('🌤️ 在消息容器顶部插入天气卡片');
+    messageContainer.insertAdjacentHTML('afterbegin', weatherHTML);
+  }
+  
+  // 添加入场动画
+  const weatherCard = messageContainer.querySelector('.weather-card');
+  if (weatherCard) {
+    weatherCard.style.opacity = '0';
+    weatherCard.style.transform = 'translateY(20px)';
+    
+    requestAnimationFrame(() => {
+      weatherCard.style.transition = 'all 0.5s ease-out';
+      weatherCard.style.opacity = '1';
+      weatherCard.style.transform = 'translateY(0)';
+    });
+    
+    console.log('✅ 天气卡片插入成功并应用动画');
+  } else {
+    console.error('❌ 天气卡片插入失败');
+  }
+}
+
+// 根据天气状况获取渐变色
+function getWeatherGradient(description) {
+  if (description.includes('晴')) {
+    return 'bg-gradient-to-br from-yellow-400 via-orange-400 to-red-400';
+  } else if (description.includes('雨')) {
+    return 'bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500';
+  } else if (description.includes('雪')) {
+    return 'bg-gradient-to-br from-gray-400 via-gray-300 to-blue-300';
+  } else if (description.includes('雾') || description.includes('霾')) {
+    return 'bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600';
+  } else if (description.includes('云') || description.includes('阴')) {
+    return 'bg-gradient-to-br from-gray-500 via-blue-400 to-blue-500';
+  }
+  // 默认蓝色渐变
+  return 'bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500';
 }
 
 // 显示删除确认对话框
@@ -1630,6 +2480,284 @@ setTimeout(() => {
 }, 100);
 
 }); // 结束第一个DOMContentLoaded
+
+// 文件上传功能
+document.addEventListener('DOMContentLoaded', function() {
+  // 文件上传相关元素
+  const attachmentButton = document.querySelector('i.ri-attachment-2').parentElement;
+  const fileInput = document.getElementById('file-input');
+  const uploadedFilesDisplay = document.getElementById('uploaded-files-display');
+
+  let currentUploadedFiles = []; // 当前会话中上传的文件
+
+  // 附件按钮点击事件 - 直接触发文件选择
+  attachmentButton.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  // 文件输入变化 - 直接上传文件
+  fileInput.addEventListener('change', function() {
+    const files = Array.from(this.files);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+    // 清空input以允许重复选择同一文件
+    this.value = '';
+  });
+
+  // 拖拽上传到整个输入区域
+  const inputContainer = document.querySelector('.relative');
+  
+  inputContainer.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.add('border-2', 'border-blue-500', 'border-dashed');
+  });
+
+  inputContainer.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.remove('border-2', 'border-blue-500', 'border-dashed');
+  });
+
+  inputContainer.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    inputContainer.classList.remove('border-2', 'border-blue-500', 'border-dashed');
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+  });
+
+  // 格式化文件大小
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+     // 获取文件类型图标
+   function getFileIcon(mimetype, filename) {
+     if (mimetype.startsWith('image/')) {
+       return 'ri-image-line';
+     } else if (mimetype.startsWith('audio/')) {
+       return 'ri-music-line';
+     } else if (mimetype.startsWith('video/')) {
+       return 'ri-video-line';
+     } else if (mimetype === 'application/pdf') {
+       return 'ri-file-pdf-line';
+     } else if (mimetype.includes('word') || filename.endsWith('.doc') || filename.endsWith('.docx')) {
+       return 'ri-file-word-line';
+     } else if (mimetype.includes('excel') || filename.endsWith('.xls') || filename.endsWith('.xlsx')) {
+       return 'ri-file-excel-line';
+     } else if (mimetype.startsWith('text/')) {
+       return 'ri-file-text-line';
+     } else {
+       return 'ri-file-line';
+     }
+   }
+
+  // 上传文件
+  async function uploadFiles(files) {
+    if (files.length === 0) return;
+
+    // 限制文件数量
+    if (currentUploadedFiles.length + files.length > 5) {
+      showToast('最多只能上传5个文件', 'error');
+      return;
+    }
+
+    try {
+      // 为每个文件创建上传卡片
+      const uploadPromises = files.map(file => uploadSingleFile(file));
+      const results = await Promise.all(uploadPromises);
+      
+      // 添加成功上传的文件到当前列表
+      results.forEach(result => {
+        if (result) {
+          currentUploadedFiles.push(result);
+        }
+      });
+
+      updateFilesDisplay();
+
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      showToast('文件上传失败: ' + error.message, 'error');
+    }
+  }
+
+  // 上传单个文件
+  async function uploadSingleFile(file) {
+    // 创建上传中的卡片
+    const fileCard = createFileCard(file, 'uploading');
+    uploadedFilesDisplay.appendChild(fileCard);
+    uploadedFilesDisplay.classList.remove('hidden');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload/single', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 更新卡片状态为成功
+        updateFileCard(fileCard, result.data, 'success');
+        return result.data;
+      } else {
+        throw new Error(result.error || '上传失败');
+      }
+    } catch (error) {
+      // 更新卡片状态为失败
+      updateFileCard(fileCard, { originalname: file.name, size: file.size }, 'error', error.message);
+      return null;
+    }
+  }
+
+  // 创建文件卡片
+  function createFileCard(file, status = 'success', errorMessage = '') {
+    const fileCard = document.createElement('div');
+    fileCard.className = 'flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border';
+    
+         const isImage = file.type ? file.type.startsWith('image/') : file.originalname?.match(/\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i);
+     const isAudio = file.type ? file.type.startsWith('audio/') : file.originalname?.match(/\.(mp3|wav|ogg|aac|flac|m4a|wma)$/i);
+     const isVideo = file.type ? file.type.startsWith('video/') : file.originalname?.match(/\.(mp4|avi|mov|wmv|webm|3gp|flv|mkv)$/i);
+     const icon = file.type ? getFileIcon(file.type, file.originalname || file.name) : getFileIcon('', file.originalname || file.name);
+     
+     let statusHtml = '';
+     let statusColor = '';
+     
+     if (status === 'uploading') {
+       statusHtml = '<div class="text-xs text-blue-600">上传中...</div>';
+       statusColor = 'text-blue-600';
+     } else if (status === 'success') {
+       if (isImage) {
+         statusHtml = '<div class="text-xs text-orange-600">仅识别附件中的文字</div>';
+         statusColor = 'text-orange-600';
+       } else if (isAudio) {
+         statusHtml = '<div class="text-xs text-purple-600">音频文件已上传</div>';
+         statusColor = 'text-purple-600';
+       } else if (isVideo) {
+         statusHtml = '<div class="text-xs text-indigo-600">视频文件已上传</div>';
+         statusColor = 'text-indigo-600';
+       } else {
+         statusHtml = '<div class="text-xs text-green-600">上传成功</div>';
+         statusColor = 'text-green-600';
+       }
+     } else if (status === 'error') {
+       statusHtml = `<div class="text-xs text-red-600">上传失败: ${errorMessage}</div>`;
+       statusColor = 'text-red-600';
+     }
+
+    fileCard.innerHTML = `
+      <div class="flex-shrink-0">
+        <i class="${icon} text-xl text-gray-600"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-gray-900 truncate">${file.originalname || file.name}</div>
+        <div class="text-xs text-gray-500">${formatFileSize(file.size)}</div>
+        ${statusHtml}
+      </div>
+      <button onclick="removeFileCard(this)" class="flex-shrink-0 w-6 h-6 flex items-center justify-center text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors">
+        <i class="ri-close-line text-xs"></i>
+      </button>
+    `;
+
+    return fileCard;
+  }
+
+     // 更新文件卡片
+   function updateFileCard(fileCard, fileData, status, errorMessage = '') {
+     const statusElement = fileCard.querySelector('.text-xs:last-of-type');
+     const isImage = fileData.mimetype ? fileData.mimetype.startsWith('image/') : fileData.originalname?.match(/\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i);
+     const isAudio = fileData.mimetype ? fileData.mimetype.startsWith('audio/') : fileData.originalname?.match(/\.(mp3|wav|ogg|aac|flac|m4a|wma)$/i);
+     const isVideo = fileData.mimetype ? fileData.mimetype.startsWith('video/') : fileData.originalname?.match(/\.(mp4|avi|mov|wmv|webm|3gp|flv|mkv)$/i);
+     
+     if (status === 'success') {
+       if (isImage) {
+         statusElement.className = 'text-xs text-orange-600';
+         statusElement.textContent = '仅识别附件中的文字';
+         
+         // 模拟文字识别过程
+         setTimeout(() => {
+           statusElement.textContent = '未提取到文字';
+           statusElement.className = 'text-xs text-gray-500';
+         }, 2000);
+       } else if (isAudio) {
+         statusElement.className = 'text-xs text-purple-600';
+         statusElement.textContent = '音频文件已上传';
+       } else if (isVideo) {
+         statusElement.className = 'text-xs text-indigo-600';
+         statusElement.textContent = '视频文件已上传';
+       } else {
+         statusElement.className = 'text-xs text-green-600';
+         statusElement.textContent = '上传成功';
+       }
+     } else if (status === 'error') {
+       statusElement.className = 'text-xs text-red-600';
+       statusElement.textContent = `上传失败: ${errorMessage}`;
+     }
+
+     // 存储文件数据到卡片元素
+     fileCard.fileData = fileData;
+   }
+
+  // 删除文件卡片
+  window.removeFileCard = function(button) {
+    const fileCard = button.closest('.flex.items-start');
+    const fileData = fileCard.fileData;
+    
+    // 从当前上传文件列表中移除
+    if (fileData && fileData.filename) {
+      currentUploadedFiles = currentUploadedFiles.filter(f => f.filename !== fileData.filename);
+      
+      // 删除服务器上的文件
+      fetch(`/api/upload/file/${fileData.filename}`, {method: 'DELETE'})
+        .catch(error => console.error('删除服务器文件失败:', error));
+    }
+    
+    // 移除卡片
+    fileCard.remove();
+    
+    // 如果没有文件了，隐藏容器
+    if (uploadedFilesDisplay.children.length === 0) {
+      uploadedFilesDisplay.classList.add('hidden');
+    }
+  };
+
+  // 更新文件显示
+  function updateFilesDisplay() {
+    if (currentUploadedFiles.length === 0) {
+      uploadedFilesDisplay.classList.add('hidden');
+    } else {
+      uploadedFilesDisplay.classList.remove('hidden');
+    }
+  }
+
+  // 清空当前上传的文件（在发送消息后调用）
+  window.clearUploadedFiles = function() {
+    currentUploadedFiles = [];
+    uploadedFilesDisplay.innerHTML = '';
+    uploadedFilesDisplay.classList.add('hidden');
+  };
+
+  // 获取当前上传的文件列表（发送消息时使用）
+  window.getCurrentUploadedFiles = function() {
+    return currentUploadedFiles;
+  };
+});
 </script>
+
+<!-- 文件输入 -->
+<input type="file" id="file-input" multiple accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt,.xls,.xlsx" style="display: none;">
 </body>
 </html>
