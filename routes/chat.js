@@ -265,20 +265,41 @@ router.post('/stream', async (req, res) => {
     // 发送聊天ID
     res.write(`data: ${JSON.stringify({ type: 'chatId', chatId: currentChatId })}\n\n`);
 
-    // 流式生成回复
-    let fullReply = '';
-    await aiService.generateStreamReply(messages, async (content, isEnd) => {
-      if (!isEnd) {
-        fullReply += content;
-        res.write(`data: ${JSON.stringify({ type: 'content', content })}\n\n`);
+    // 首先生成AI回复以检查是否包含天气信息
+    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch });
+    
+    // 如果包含天气信息，先发送天气数据
+    if (aiReply.weather) {
+      res.write(`data: ${JSON.stringify({ type: 'weather', weather: aiReply.weather })}\n\n`);
+    }
+
+    // 流式发送内容
+    let currentPos = 0;
+    const contentToSend = aiReply.content;
+    
+    const sendChunk = async () => {
+      if (currentPos < contentToSend.length) {
+        const chunkSize = Math.min(10, contentToSend.length - currentPos);
+        const chunk = contentToSend.slice(currentPos, currentPos + chunkSize);
+        currentPos += chunkSize;
+        
+        res.write(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`);
+        
+        // 继续发送下一个chunk
+        setTimeout(sendChunk, 30);
       } else {
+        // 发送完毕
         // 保存完整回复
-        const aiReply = {
+        const savedReply = {
           role: 'assistant',
-          content: fullReply,
-          timestamp: new Date().toISOString()
+          content: aiReply.content,
+          timestamp: new Date().toISOString(),
+          weather: aiReply.weather,
+          searchUsed: aiReply.searchUsed,
+          searchQuery: aiReply.searchQuery,
+          searchResultsCount: aiReply.searchResultsCount
         };
-        await storage.addMessage(currentChatId, aiReply);
+        await storage.addMessage(currentChatId, savedReply);
         
         // 智能生成标题
         const finalChat = await storage.getChat(currentChatId);
@@ -304,11 +325,50 @@ router.post('/stream', async (req, res) => {
         res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
         res.end();
       }
-    }, { useSearch, useThinking });
+    };
+    
+    // 开始发送chunks
+    sendChunk();
 
   } catch (error) {
     console.error('流式聊天错误:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', error: '聊天失败' })}\n\n`);
+    
+    // 根据错误类型返回不同的错误信息
+    let errorMessage = '聊天失败，请重试';
+    let errorCode = 'CHAT_ERROR';
+    
+    if (error.code === 'ECONNRESET') {
+      errorMessage = 'AI服务连接中断，请重试';
+      errorCode = 'CONNECTION_RESET';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = '无法连接到AI服务，请检查网络';
+      errorCode = 'SERVICE_UNAVAILABLE';
+    } else if (error.status === 429) {
+      errorMessage = '请求过于频繁，请稍后再试';
+      errorCode = 'RATE_LIMIT_EXCEEDED';
+    } else if (error.status === 401) {
+      errorMessage = 'AI服务认证失败，请联系管理员';
+      errorCode = 'AUTH_FAILED';
+    } else if (error.name === 'AbortError') {
+      errorMessage = '请求被取消';
+      errorCode = 'REQUEST_ABORTED';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = '请求超时，请重试';
+      errorCode = 'TIMEOUT';
+    } else if (error.message.includes('无效的API密钥')) {
+      errorMessage = 'AI服务配置错误，请联系管理员';
+      errorCode = 'CONFIG_ERROR';
+    }
+    
+    const errorResponse = {
+      type: 'error',
+      error: errorMessage,
+      code: errorCode,
+      retryable: ['CONNECTION_RESET', 'SERVICE_UNAVAILABLE', 'TIMEOUT'].includes(errorCode),
+      timestamp: new Date().toISOString()
+    };
+    
+    res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
     res.end();
   }
 });

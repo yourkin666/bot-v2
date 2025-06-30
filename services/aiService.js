@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const config = require('../config');
 const searchService = require('./searchService');
+const weatherService = require('./weatherService');
 
 class AIService {
   constructor() {
@@ -57,6 +58,14 @@ class AIService {
 
       const lastMessage = messages[messages.length - 1];
       let searchResults = null;
+      let weatherData = null;
+
+      // 检测是否是天气查询
+      const cityName = this.extractCityFromWeatherQuery(lastMessage.content);
+      if (cityName) {
+        console.log('🌤️ 检测到天气查询，城市:', cityName);
+        weatherData = await weatherService.getWeatherByCity(cityName);
+      }
 
       // 根据前端开关决定是否联网搜索
       if (useSearch) {
@@ -128,6 +137,12 @@ ${searchResults.results.map((r, i) =>
         reply.searchUsed = true;
         reply.searchQuery = searchResults.query;
         reply.searchResultsCount = searchResults.results.length;
+      }
+
+      // 添加天气信息到回复中
+      if (weatherData) {
+        reply.weather = weatherData;
+        console.log('🌤️ 已添加天气信息到回复中');
       }
 
       // 如果启用思考过程，生成思考内容
@@ -359,6 +374,185 @@ ${searchResults.results.map((r, i) =>
       console.error('流式回复错误:', error);
       callback('哎呀，我刚才开小差了！😅 能再说一遍吗？', true);
       return '';
+    }
+  }
+
+  // 从用户消息中提取城市名称（优化版）
+  extractCityFromWeatherQuery(message) {
+    // 天气查询关键词（扩展版）
+    const weatherKeywords = [
+      '天气', '气温', '温度', '下雨', '晴天', '阴天', '多云', '雪', '风', '湿度',
+      '今天', '明天', '气候', '雷雨', '暴雨', '小雨', '中雨', '大雨', '阵雨',
+      '晴', '阴', '雾', '霾', '沙尘', '台风', '冰雹', '霜', '露水'
+    ];
+    
+    // 快速检查是否包含天气相关关键词
+    const hasWeatherKeyword = weatherKeywords.some(keyword => message.includes(keyword));
+    if (!hasWeatherKeyword) {
+      return null;
+    }
+
+    // 扩展的城市列表（按热度排序）
+    const cities = [
+      // 直辖市
+      '北京', '上海', '天津', '重庆',
+      // 省会城市
+      '广州', '深圳', '杭州', '南京', '武汉', '成都', '西安', '长沙', 
+      '郑州', '沈阳', '哈尔滨', '长春', '石家庄', '太原', '呼和浩特',
+      '济南', '南昌', '合肥', '福州', '昆明', '贵阳', '海口', '南宁',
+      '拉萨', '银川', '西宁', '乌鲁木齐',
+      // 其他重要城市
+      '青岛', '大连', '厦门', '宁波', '苏州', '无锡', '佛山', '东莞',
+      '珠海', '中山', '江门', '湛江', '汕头', '惠州', '温州', '嘉兴',
+      '绍兴', '台州', '金华', '衢州', '丽水', '湖州', '舟山'
+    ];
+
+    // 精确匹配城市名称
+    for (const city of cities) {
+      if (message.includes(city)) {
+        console.log(`🌤️ 精确匹配到城市: ${city}`);
+        return city;
+      }
+    }
+
+    // 使用正则表达式匹配更复杂的表达（优化版）
+    const patterns = [
+      // 城市+天气模式
+      /([北上广深杭南武成重天西长郑沈青大厦福昌合太石济呼银宁乌拉昆贵海三]\w{0,3})[的在]?(?:天气|气温|温度|下雨|晴天)/,
+      // 地名+市/县/区+天气
+      /(\w{1,4}[市县区])[的在]?(?:天气|气温|温度)/,
+      // 今天/明天+地名+天气
+      /(?:今天|明天)(\w{1,4})[的在]?(?:天气|气温|温度)/,
+      // 天气+地名模式
+      /(?:天气|气温|温度)[如怎].*?(\w{1,4}[市县区]?)/
+    ];
+
+    for (const pattern of patterns) {
+      const match = message.match(pattern);
+      if (match && match[1]) {
+        let cityName = match[1].replace(/[市县区]$/, ''); // 移除后缀
+        console.log(`🌤️ 正则匹配到城市: ${cityName}`);
+        return cityName;
+      }
+    }
+
+    // 智能推断：如果消息很简单，可能是直接问天气
+    if (message.length <= 10 && weatherKeywords.some(k => message.includes(k))) {
+      console.log('🌤️ 简单天气查询，使用默认城市: 北京');
+      return '北京';
+    }
+
+    return null; // 没有检测到明确的城市信息
+  }
+
+  // 优化的错误重试机制
+  async generateReplyWithRetry(messages, options = {}, maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🤖 AI回复生成尝试 ${attempt}/${maxRetries}`);
+        const result = await this.generateReply(messages, options);
+        console.log(`✅ AI回复生成成功 (尝试 ${attempt})`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ AI回复生成失败 (尝试 ${attempt}):`, error.message);
+        
+        // 最后一次尝试失败时，不再重试
+        if (attempt === maxRetries) {
+          break;
+        }
+        
+        // 根据错误类型决定重试延迟
+        const delay = this.getRetryDelay(error, attempt);
+        console.log(`⏳ ${delay}ms 后重试...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    // 所有重试都失败，返回友好的错误回复
+    return this.getFallbackReply(lastError);
+  }
+
+  // 根据错误类型获取重试延迟
+  getRetryDelay(error, attempt) {
+    // 网络错误：较短延迟
+    if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
+      return 1000 * attempt; // 1s, 2s, 3s
+    }
+    
+    // API限流：较长延迟
+    if (error.status === 429) {
+      return 5000 * attempt; // 5s, 10s, 15s
+    }
+    
+    // 其他错误：中等延迟
+    return 2000 * attempt; // 2s, 4s, 6s
+  }
+
+  // 获取降级回复
+  getFallbackReply(error) {
+    const fallbackMessages = [
+      '哎呀，我刚才走神了！😅 能再说一遍吗？',
+      '抱歉，我的大脑短路了一下！🤖 请重新告诉我你的问题。',
+      '呜呜，我遇到了一个小问题！🔧 请稍后再试，或者换个说法问我。',
+      '我的思路打结了！🧠 给我一点时间理清思路，然后再问我吧。',
+      '系统有点忙碌，让我休息一下再回来！⏰ 请稍后重试。'
+    ];
+    
+    const randomMessage = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+    
+    return {
+      role: 'assistant',
+      content: randomMessage,
+      timestamp: new Date().toISOString(),
+      error: true,
+      errorType: error.name || 'UnknownError',
+      fallback: true
+    };
+  }
+
+  // 优化的流式回复生成
+  async generateStreamReplyOptimized(messages, callback, options = {}) {
+    try {
+      // 先快速生成回复
+      const aiReply = await this.generateReplyWithRetry(messages, options, 2);
+      
+      if (aiReply.error) {
+        callback(aiReply.content, true);
+        return aiReply.content;
+      }
+
+      // 模拟打字效果
+      const content = aiReply.content;
+      let currentPos = 0;
+      const chunkSize = Math.max(1, Math.floor(content.length / 50)); // 动态调整chunk大小
+      
+      const sendNextChunk = () => {
+        if (currentPos < content.length) {
+          const chunk = content.slice(currentPos, currentPos + chunkSize);
+          currentPos += chunkSize;
+          
+          callback(chunk, false);
+          
+          // 动态调整延迟：内容越长，速度越快
+          const delay = Math.max(20, 100 - Math.floor(content.length / 20));
+          setTimeout(sendNextChunk, delay);
+        } else {
+          // 发送结束信号和完整回复信息
+          callback('', true, aiReply);
+        }
+      };
+      
+      sendNextChunk();
+      return content;
+      
+    } catch (error) {
+      console.error('优化流式回复生成失败:', error);
+      const fallback = this.getFallbackReply(error);
+      callback(fallback.content, true);
+      return fallback.content;
     }
   }
 }
