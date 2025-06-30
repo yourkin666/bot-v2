@@ -57,6 +57,9 @@ overflow: hidden;
 .chat-container {
 height: calc(100vh - 80px);
 }
+.chat-messages {
+scroll-behavior: smooth;
+}
 .message-input:focus {
 outline: none;
 }
@@ -724,6 +727,53 @@ window.currentChatId = null;
 window.isAIResponding = false; // 添加AI响应状态标记
 window.currentStreamController = null; // 当前流式响应控制器
 
+// 平滑滚动到底部函数
+function smoothScrollToBottom() {
+const chatContainer = document.getElementById('chat-content');
+if (!chatContainer) return;
+
+// 使用 scrollIntoView 实现平滑滚动
+const lastMessage = chatContainer.lastElementChild;
+if (lastMessage) {
+    lastMessage.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'end',
+        inline: 'nearest'
+    });
+} else {
+    // 如果没有消息，直接滚动到底部
+    chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: 'smooth'
+    });
+}
+}
+
+// 强制滚动到底部（无动画，用于初始化等场景）
+function forceScrollToBottom() {
+const chatContainer = document.getElementById('chat-content');
+if (chatContainer) {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+}
+
+// 检查是否需要滚动（用于优化性能）
+function shouldAutoScroll() {
+const chatContainer = document.getElementById('chat-content');
+if (!chatContainer) return false;
+
+// 如果用户滚动到接近底部（容差50px），则认为需要自动滚动
+const isNearBottom = chatContainer.scrollTop + chatContainer.clientHeight >= chatContainer.scrollHeight - 50;
+return isNearBottom;
+}
+
+// 智能滚动：只有当用户在底部附近时才自动滚动
+function smartScrollToBottom() {
+if (shouldAutoScroll()) {
+    smoothScrollToBottom();
+}
+}
+
 // 中断AI响应函数
 function interruptAIResponse() {
 if (window.currentStreamController) {
@@ -886,7 +936,8 @@ if (newMessage) {
 renderMathSafely(newMessage);
 }
 
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 }
 
 function showTypingMessage() {
@@ -909,7 +960,8 @@ const typingHTML = `
 `;
 
 chatContainer.insertAdjacentHTML('beforeend', typingHTML);
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 
 // 添加光标闪烁效果（使用CSS动画）
 const cursor = chatContainer.querySelector('.ai-message:last-child .typing-cursor');
@@ -929,11 +981,12 @@ element.innerHTML = renderedText;
 console.log('typeWriterEffect: 渲染数学公式');
 setTimeout(() => {
     renderMathSafely(element);
+    // 数学公式渲染完成后再次智能滚动，因为公式可能改变内容高度
+    setTimeout(() => smartScrollToBottom(), 100);
 }, 50); // 短暂延迟确保DOM更新完成
 
-// 滚动到底部
-const chatContainer = document.getElementById('chat-content');
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 使用智能滚动：只有当用户在底部附近时才自动滚动
+smartScrollToBottom();
 }
 
 function finishTyping(element) {
@@ -947,10 +1000,19 @@ cursor.style.display = 'none';
 console.log('完成打字效果，强制渲染数学公式');
 console.log('最终内容:', element.innerHTML);
 
-// 多次尝试渲染以确保成功
-setTimeout(() => renderMathSafely(element), 100);
-setTimeout(() => renderMathSafely(element), 500);
-setTimeout(() => renderMathSafely(element), 1000);
+// 多次尝试渲染以确保成功，并在渲染后滚动
+setTimeout(() => {
+    renderMathSafely(element);
+    smoothScrollToBottom();
+}, 100);
+setTimeout(() => {
+    renderMathSafely(element);
+    smoothScrollToBottom();
+}, 500);
+setTimeout(() => {
+    renderMathSafely(element);
+    smoothScrollToBottom();
+}, 1000);
 }
 
 // 显示中断提示
@@ -1090,7 +1152,8 @@ const errorHTML = `
 </div>
 `;
 chatContainer.insertAdjacentHTML('beforeend', errorHTML);
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 }
 
 function bindThinkingToggle() {
@@ -1332,6 +1395,11 @@ messages.forEach(message => {
     displayAssistantMessage(message.content, message.thinking, message.searchUsed, message.searchResultsCount);
   }
 });
+
+// 显示完所有消息后滚动到底部
+setTimeout(() => {
+    smoothScrollToBottom();
+}, 100); // 短暂延迟确保所有消息渲染完成
 }
 
 // 显示助手消息
@@ -1395,7 +1463,8 @@ if (newMessage) {
 // 绑定思考过程切换事件
 bindThinkingToggle();
 
-chatContainer.scrollTop = chatContainer.scrollHeight;
+// 平滑滚动到底部
+smoothScrollToBottom();
 }
 
 // 显示删除确认对话框
