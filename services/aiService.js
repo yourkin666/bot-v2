@@ -202,6 +202,80 @@ ${searchResults.results.map((r, i) =>
     }
   }
 
+  // 生成对话标题
+  async generateChatTitle(messages) {
+    try {
+      // 只使用前几轮对话来生成标题，避免过长
+      const relevantMessages = messages.slice(0, 4).map(msg => 
+        `${msg.role === 'user' ? '用户' : 'AI小子'}: ${msg.content.substring(0, 100)}`
+      ).join('\n');
+
+      // 构建标题生成的请求消息
+      const titlePrompt = `请根据以下对话内容，生成一个简洁有意义的标题（不超过8个字）：
+
+${relevantMessages}
+
+要求：
+1. 体现对话主要内容
+2. 用简单易懂的词汇
+3. 不超过8个字
+4. 不要引号或符号
+5. 要有童趣感
+
+请只回复标题，不要其他内容。`;
+
+      // 使用现有的AI回复逻辑生成标题
+      const titleMessages = [
+        { role: 'user', content: titlePrompt }
+      ];
+
+      const response = await this.generateReply(titleMessages, {
+        temperature: 0.3,
+        maxTokens: 30
+      });
+
+      // 提取标题（去除多余内容）
+      let title = response.content.trim();
+      
+      // 清理可能的引号和多余文字
+      title = title.replace(/[""''「」《》]/g, '');
+      title = title.replace(/^标题[:：]?/, '');
+      title = title.replace(/^题目[:：]?/, '');
+      title = title.split('\n')[0]; // 只取第一行
+      title = title.substring(0, 8); // 限制长度
+      
+      console.log('🏷️ AI生成的对话标题:', title);
+      
+      return title || this.generateFallbackTitle(messages);
+
+    } catch (error) {
+      console.error('生成对话标题失败:', error);
+      return this.generateFallbackTitle(messages);
+    }
+  }
+
+  // 生成备用标题
+  generateFallbackTitle(messages) {
+    const firstUserMessage = messages.find(msg => msg.role === 'user');
+    if (!firstUserMessage) return '新对话';
+    
+    const content = firstUserMessage.content;
+    
+    // 智能提取关键词生成标题
+    if (content.includes('画') && content.includes('猫')) return '画猫咪教程';
+    if (content.includes('画') && content.includes('花')) return '画花朵教程';
+    if (content.includes('学') && content.includes('画')) return '学画画指导';
+    if (content.includes('做') && content.includes('蛋糕')) return '做蛋糕教程';
+    if (content.includes('故事')) return '讲故事时光';
+    if (content.includes('游戏')) return '一起玩游戏';
+    if (content.includes('数学')) return '数学学习';
+    if (content.includes('英语')) return '英语学习';
+    if (content.includes('你好')) return '初次见面';
+    
+    // 默认按内容长度截取
+    return content.substring(0, 6) + '...';
+  }
+
   // 流式回复（可选功能）
   async generateStreamReply(messages, callback, options = {}) {
     try {

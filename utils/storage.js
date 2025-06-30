@@ -89,9 +89,9 @@ class Storage {
       chats[chatId].messages.push(messageWithId);
       chats[chatId].updatedAt = new Date().toISOString();
       
-      // 更新聊天标题（使用第一条用户消息）
+      // 暂时设置简单标题，后续会由AI生成更好的标题
       if (message.role === 'user' && chats[chatId].messages.length === 1) {
-        chats[chatId].title = message.content.substring(0, 20) + (message.content.length > 20 ? '...' : '');
+        chats[chatId].title = '新对话...';
       }
 
       await fs.writeJson(this.chatsFile, chats, { spaces: 2 });
@@ -99,6 +99,28 @@ class Storage {
     } catch (error) {
       console.error('添加消息失败:', error);
       return null;
+    }
+  }
+
+  // 更新聊天标题
+  async updateChatTitle(chatId, title) {
+    try {
+      const chats = await this.getAllChats();
+      
+      if (!chats[chatId]) {
+        throw new Error('聊天不存在');
+      }
+
+      chats[chatId].title = title;
+      chats[chatId].updatedAt = new Date().toISOString();
+
+      await fs.writeJson(this.chatsFile, chats, { spaces: 2 });
+      console.log(`📝 更新聊天标题: ${chatId} -> ${title}`);
+      
+      return true;
+    } catch (error) {
+      console.error('更新聊天标题失败:', error);
+      throw error;
     }
   }
 
@@ -112,22 +134,26 @@ class Storage {
 
       // 按时间分组
       const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       const groups = {
-        '7天内': [],
-        '30天内': [],
+        '当天': [],
+        '七天以内': [],
+        '一个月以内': [],
         '更早': {}
       };
 
       chatArray.forEach(chat => {
         const updatedAt = new Date(chat.updatedAt);
         
-        if (updatedAt > sevenDaysAgo) {
-          groups['7天内'].push(chat);
-        } else if (updatedAt > thirtyDaysAgo) {
-          groups['30天内'].push(chat);
+        if (updatedAt >= todayStart) {
+          groups['当天'].push(chat);
+        } else if (updatedAt > sevenDaysAgo) {
+          groups['七天以内'].push(chat);
+        } else if (updatedAt > oneMonthAgo) {
+          groups['一个月以内'].push(chat);
         } else {
           const monthKey = `${updatedAt.getFullYear()}-${String(updatedAt.getMonth() + 1).padStart(2, '0')}`;
           if (!groups['更早'][monthKey]) {
@@ -140,7 +166,51 @@ class Storage {
       return groups;
     } catch (error) {
       console.error('获取聊天历史失败:', error);
-      return { '7天内': [], '30天内': [], '更早': {} };
+      return { '当天': [], '七天以内': [], '一个月以内': [], '更早': {} };
+    }
+  }
+
+  // 删除聊天
+  async deleteChat(chatId) {
+    try {
+      const chats = await this.getAllChats();
+      
+      if (!chats[chatId]) {
+        throw new Error('聊天不存在');
+      }
+
+      // 删除指定的聊天
+      delete chats[chatId];
+
+      await fs.writeJson(this.chatsFile, chats, { spaces: 2 });
+      return true;
+    } catch (error) {
+      console.error('删除聊天失败:', error);
+      throw error;
+    }
+  }
+
+  // 批量删除聊天
+  async deleteMultipleChats(chatIds) {
+    try {
+      const chats = await this.getAllChats();
+      let deletedCount = 0;
+
+      chatIds.forEach(chatId => {
+        if (chats[chatId]) {
+          delete chats[chatId];
+          deletedCount++;
+        }
+      });
+
+      if (deletedCount > 0) {
+        await fs.writeJson(this.chatsFile, chats, { spaces: 2 });
+      }
+
+      return deletedCount;
+    } catch (error) {
+      console.error('批量删除聊天失败:', error);
+      throw error;
     }
   }
 }

@@ -27,7 +27,7 @@ router.post('/send', async (req, res) => {
 
     // 如果没有找到聊天或没有提供chatId，创建新聊天
     if (!chat) {
-      chat = await storage.createChat(message.substring(0, 20) + '...');
+      chat = await storage.createChat('新对话...');
       currentChatId = chat.id;
     }
 
@@ -48,6 +48,27 @@ router.post('/send', async (req, res) => {
 
     // 保存AI回复
     await storage.addMessage(currentChatId, aiReply);
+
+    // 智能生成标题
+    const finalChat = await storage.getChat(currentChatId);
+    const shouldGenerateTitle = (
+      // 新对话，有足够消息数量
+      (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
+      // 或者是以...结尾的截取标题（表示需要智能生成）
+      (finalChat.messages.length >= 2 && finalChat.title.endsWith('...') && finalChat.title.length <= 20) ||
+      // 或者标题是"新对话"
+      (finalChat.messages.length >= 2 && finalChat.title === '新对话')
+    );
+    
+    if (shouldGenerateTitle) {
+      try {
+        const aiTitle = await aiService.generateChatTitle(finalChat.messages);
+        await storage.updateChatTitle(currentChatId, aiTitle);
+        console.log('🏷️ 已为对话生成AI标题:', aiTitle);
+      } catch (error) {
+        console.error('生成AI标题失败:', error);
+      }
+    }
 
     // 返回结果
     res.json({
@@ -137,6 +158,64 @@ router.post('/new', async (req, res) => {
   }
 });
 
+// 删除聊天
+router.delete('/:chatId', async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    
+    const result = await storage.deleteChat(chatId);
+    
+    res.json({
+      success: true,
+      message: '聊天删除成功'
+    });
+
+  } catch (error) {
+    console.error('删除聊天失败:', error);
+    
+    if (error.message === '聊天不存在') {
+      res.status(404).json({
+        success: false,
+        error: '聊天不存在'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: '删除聊天失败'
+      });
+    }
+  }
+});
+
+// 批量删除聊天
+router.delete('/batch/delete', async (req, res) => {
+  try {
+    const { chatIds } = req.body;
+    
+    if (!chatIds || !Array.isArray(chatIds) || chatIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供要删除的聊天ID列表'
+      });
+    }
+
+    const deletedCount = await storage.deleteMultipleChats(chatIds);
+    
+    res.json({
+      success: true,
+      message: `成功删除 ${deletedCount} 个聊天`,
+      deletedCount
+    });
+
+  } catch (error) {
+    console.error('批量删除聊天失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '批量删除聊天失败'
+    });
+  }
+});
+
 // 流式聊天接口（可选）
 router.post('/stream', async (req, res) => {
   try {
@@ -167,7 +246,7 @@ router.post('/stream', async (req, res) => {
     }
 
     if (!chat) {
-      chat = await storage.createChat(message.substring(0, 20) + '...');
+      chat = await storage.createChat('新对话...');
       currentChatId = chat.id;
     }
 
@@ -188,7 +267,7 @@ router.post('/stream', async (req, res) => {
 
     // 流式生成回复
     let fullReply = '';
-    await aiService.generateStreamReply(messages, (content, isEnd) => {
+    await aiService.generateStreamReply(messages, async (content, isEnd) => {
       if (!isEnd) {
         fullReply += content;
         res.write(`data: ${JSON.stringify({ type: 'content', content })}\n\n`);
@@ -199,7 +278,28 @@ router.post('/stream', async (req, res) => {
           content: fullReply,
           timestamp: new Date().toISOString()
         };
-        storage.addMessage(currentChatId, aiReply);
+        await storage.addMessage(currentChatId, aiReply);
+        
+        // 智能生成标题
+        const finalChat = await storage.getChat(currentChatId);
+        const shouldGenerateTitle = (
+          // 新对话，有足够消息数量
+          (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
+          // 或者是以...结尾的截取标题（表示需要智能生成）
+          (finalChat.messages.length >= 2 && finalChat.title.endsWith('...') && finalChat.title.length <= 20) ||
+          // 或者标题是"新对话"
+          (finalChat.messages.length >= 2 && finalChat.title === '新对话')
+        );
+        
+        if (shouldGenerateTitle) {
+          try {
+            const aiTitle = await aiService.generateChatTitle(finalChat.messages);
+            await storage.updateChatTitle(currentChatId, aiTitle);
+            console.log('🏷️ 已为流式对话生成AI标题:', aiTitle);
+          } catch (error) {
+            console.error('生成流式AI标题失败:', error);
+          }
+        }
         
         res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
         res.end();
