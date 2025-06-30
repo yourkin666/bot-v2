@@ -4,6 +4,7 @@ const path = require('path');
 const config = require('./config');
 const chatRoutes = require('./routes/chat');
 const searchRoutes = require('./routes/search');
+const voiceRoutes = require('./routes/voice');
 
 const app = express();
 const PORT = config.server.port;
@@ -16,6 +17,7 @@ app.use(express.static(path.join(__dirname)));
 // 路由
 app.use('/api/chat', chatRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/voice', voiceRoutes);
 
 // 提供静态文件服务（前端页面）
 app.get('/', (req, res) => {
@@ -28,6 +30,10 @@ app.get('/webpage', (req, res) => {
 
 app.get('/test-math', (req, res) => {
   res.sendFile(path.join(__dirname, 'test-math.html'));
+});
+
+app.get('/test-voice', (req, res) => {
+  res.sendFile(path.join(__dirname, 'test-voice.html'));
 });
 
 // 启动服务器

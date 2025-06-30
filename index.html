@@ -474,14 +474,17 @@ class="message-input w-full bg-gray-50 rounded-lg pl-4 pr-12 py-3 resize-none bo
 				placeholder="给 AI小子 发送消息"
 rows="1"
 ></textarea>
-<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
-<i class="ri-attachment-2"></i>
-</button>
-<button id="send-button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary">
-<i class="ri-send-plane-fill"></i>
-</button>
-</div>
+				<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+					<button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+						<i class="ri-attachment-2"></i>
+					</button>
+					<button id="voice-button" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-primary transition-colors" title="点击录音">
+						<i class="ri-mic-line"></i>
+					</button>
+					<button id="send-button" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary">
+						<i class="ri-send-plane-fill"></i>
+					</button>
+				</div>
 </div>
 </div>
 </div>
@@ -603,12 +606,13 @@ console.error('数学公式渲染错误:', error);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-const messageInput = document.querySelector('.message-input');
-const sendButton = document.getElementById('send-button');
-const welcomeMessage = document.getElementById('welcome-message');
-const chatContent = document.getElementById('chat-content');
-const newChatButton = document.getElementById('new-chat-button');
-const searchToggle = document.getElementById('search-toggle');
+	const messageInput = document.querySelector('.message-input');
+	const sendButton = document.getElementById('send-button');
+	const voiceButton = document.getElementById('voice-button');
+	const welcomeMessage = document.getElementById('welcome-message');
+	const chatContent = document.getElementById('chat-content');
+	const newChatButton = document.getElementById('new-chat-button');
+	const searchToggle = document.getElementById('search-toggle');
 
 // 页面加载时重置状态
 window.isAIResponding = false;
@@ -713,10 +717,26 @@ sendButton.click();
 }
 });
 
+// 录音按钮事件监听
+voiceButton.addEventListener('click', function() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+
 // API 交互函数
 window.currentChatId = null;
 window.isAIResponding = false; // 添加AI响应状态标记
 window.currentStreamController = null; // 当前流式响应控制器
+
+// 录音功能变量
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordingStartTime = null;
+let recognition = null; // Web Speech API
 
 // 平滑滚动到底部函数
 function smoothScrollToBottom() {
@@ -774,6 +794,179 @@ if (window.currentStreamController) {
 }
 window.isAIResponding = false;
 disableUserInput(false);
+}
+
+// 录音功能函数 - 使用Web Speech API
+function initializeSpeechRecognition() {
+  try {
+    // 检查浏览器支持
+    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+      console.warn('浏览器不支持语音识别');
+      return false;
+    }
+    
+    // 创建语音识别实例
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    // 配置语音识别
+    recognition.continuous = false;  // 不连续识别
+    recognition.interimResults = false;  // 不显示中间结果
+    recognition.lang = 'zh-CN';  // 默认中文，也可以自动识别
+    recognition.maxAlternatives = 1;  // 最多返回1个结果
+    
+    // 监听识别结果
+    recognition.onresult = function(event) {
+      const result = event.results[0];
+      if (result.isFinal) {
+        const recognizedText = result[0].transcript;
+        console.log('🎤 语音识别结果:', recognizedText);
+        handleSpeechResult(recognizedText);
+      }
+    };
+    
+    // 监听识别结束
+    recognition.onend = function() {
+      console.log('🎤 语音识别结束');
+      isRecording = false;
+      updateVoiceButtonState(false);
+    };
+    
+    // 监听识别错误
+    recognition.onerror = function(event) {
+      console.error('语音识别错误:', event.error);
+      isRecording = false;
+      updateVoiceButtonState(false);
+      
+      let errorMessage = '语音识别失败';
+      switch(event.error) {
+        case 'no-speech':
+          errorMessage = '没有检测到语音，请重试';
+          break;
+        case 'audio-capture':
+          errorMessage = '无法访问麦克风';
+          break;
+        case 'not-allowed':
+          errorMessage = '麦克风权限被拒绝';
+          break;
+        case 'network':
+          errorMessage = '网络错误，请检查连接';
+          break;
+        default:
+          errorMessage = `语音识别失败: ${event.error}`;
+      }
+      showToast(errorMessage, 'error');
+    };
+    
+    // 监听开始识别
+    recognition.onstart = function() {
+      console.log('🎤 开始语音识别');
+      isRecording = true;
+      updateVoiceButtonState(true);
+      showToast('请说话，正在听取您的语音...', 'info');
+    };
+    
+    return true;
+  } catch (error) {
+    console.error('初始化语音识别失败:', error);
+    return false;
+  }
+}
+
+function startRecording() {
+  if (isRecording) {
+    stopRecording();
+    return;
+  }
+  
+  if (!recognition) {
+    const initialized = initializeSpeechRecognition();
+    if (!initialized) {
+      showToast('您的浏览器不支持语音识别功能', 'error');
+      return;
+    }
+  }
+  
+  try {
+    console.log('🎤 启动语音识别');
+    recognition.start();
+  } catch (error) {
+    console.error('启动语音识别失败:', error);
+    showToast('语音识别启动失败，请重试', 'error');
+  }
+}
+
+function stopRecording() {
+  if (recognition && isRecording) {
+    console.log('🎤 停止语音识别');
+    recognition.stop();
+  }
+}
+
+function updateVoiceButtonState(recording) {
+  const icon = voiceButton.querySelector('i');
+  
+  if (recording) {
+    icon.className = 'ri-stop-circle-fill';
+    voiceButton.classList.add('text-red-500', 'animate-pulse');
+    voiceButton.classList.remove('text-gray-500');
+    voiceButton.title = '点击停止录音';
+  } else {
+    icon.className = 'ri-mic-line';
+    voiceButton.classList.remove('text-red-500', 'animate-pulse');
+    voiceButton.classList.add('text-gray-500');
+    voiceButton.title = '点击录音';
+  }
+}
+
+async function handleSpeechResult(recognizedText) {
+  try {
+    console.log('🎤 处理识别结果:', recognizedText);
+    
+    // 检查是否是中文
+    const isChinese = /[\u4e00-\u9fff]/.test(recognizedText);
+    
+    if (isChinese) {
+      // 如果是中文，直接使用
+      showToast(`识别成功: ${recognizedText}`, 'success');
+      messageInput.value = recognizedText;
+    } else {
+      // 如果不是中文，调用翻译API
+      showToast('正在翻译为中文...', 'info');
+      
+      const response = await fetch('/api/voice/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: recognizedText
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const translatedText = result.data.translatedText;
+        showToast(`识别并翻译成功: ${recognizedText} → ${translatedText}`, 'success');
+        messageInput.value = translatedText;
+      } else {
+        showToast(`识别成功，翻译失败: ${recognizedText}`, 'warning');
+        messageInput.value = recognizedText;
+      }
+    }
+    
+    // 自动调整输入框高度
+    messageInput.style.height = 'auto';
+    messageInput.style.height = (messageInput.scrollHeight > 48) ? messageInput.scrollHeight + 'px' : '48px';
+    
+    // 聚焦到输入框
+    messageInput.focus();
+    
+  } catch (error) {
+    console.error('处理语音结果时出错:', error);
+    showToast('语音处理失败，请重试', 'error');
+  }
 }
 
 async function sendMessageToAPI(message) {
