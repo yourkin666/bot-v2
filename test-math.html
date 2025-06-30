@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学公式测试页面</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-case h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        .result {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .katex-display {
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧮 数学公式渲染测试</h1>
+    <p>这个页面用于测试优化后的数学公式渲染功能。</p>
+
+    <div class="test-case">
+        <h3>测试1：基础公式</h3>
+        <div class="result" id="test1">
+            爱因斯坦的质能方程是 $E = mc^2$，这是物理学中最著名的公式之一。
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试2：块级公式</h3>
+        <div class="result" id="test2">
+            二次方程的求根公式：
+            $$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试3：复杂数学表达式</h3>
+        <div class="result" id="test3">
+            积分公式：$$\int_0^1 x^2 dx = \left[\frac{x^3}{3}\right]_0^1 = \frac{1}{3}$$
+            
+            无穷级数：$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试4：混合内容</h3>
+        <div class="result" id="test4">
+            当我们讨论数学时，行内公式如 $\alpha + \beta = \gamma$ 和块级公式都很重要：
+            
+            $$\begin{pmatrix} 
+            1 & 2 & 3 \\
+            4 & 5 & 6 \\
+            7 & 8 & 9
+            \end{pmatrix}$$
+            
+            这就是数学的美妙之处。
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试5：LaTeX格式</h3>
+        <div class="result" id="test5">
+            使用 \(...\) 格式的行内公式：\(\lim_{x \to 0} \frac{\sin x}{x} = 1\)
+            
+            使用 \[...\] 格式的块级公式：
+            \[\frac{d}{dx}\int_a^x f(t)dt = f(x)\]
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>测试状态</h3>
+        <div id="status">
+            <p>正在加载数学公式...</p>
+        </div>
+    </div>
+
+    <script>
+        // KaTeX 配置
+        const mathConfig = {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false,
+            errorColor: '#cc0000',
+            strict: false
+        };
+
+        // 等待 KaTeX 加载并渲染公式
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (typeof renderMathInElement !== 'undefined') {
+                    // 渲染所有测试用例
+                    for (let i = 1; i <= 5; i++) {
+                        const element = document.getElementById(`test${i}`);
+                        if (element) {
+                            renderMathInElement(element, mathConfig);
+                        }
+                    }
+                    
+                    document.getElementById('status').innerHTML = `
+                        <p style="color: green;">✅ 数学公式渲染完成！</p>
+                        <p>如果上面的公式都正确显示，说明优化成功。</p>
+                        <p><a href="/" style="color: #007bff;">返回主页</a> | 
+                           <a href="/math-formula" style="color: #007bff;">访问专业工具</a></p>
+                    `;
+                } else {
+                    document.getElementById('status').innerHTML = `
+                        <p style="color: red;">❌ KaTeX 加载失败</p>
+                        <p>请检查网络连接或刷新页面重试。</p>
+                    `;
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

@@ -410,8 +410,8 @@ overflow-y: hidden;
 </div>
 </div>
 <!-- 底部功能区 -->
-<div class="p-3 border-t border-gray-100">
-<!-- 个人信息按钮已移除 -->
+<div class="p-3 border-t border-gray-100 space-y-2">
+<!-- 功能区域预留，可以添加其他工具 -->
 </div>
 </div>
 <!-- 中间聊天区域 -->
@@ -478,59 +478,14 @@ rows="1"
 </div>
 </div>
 <script id="chat-interaction">
-// Markdown渲染函数
+// 简化的Markdown渲染函数 - 直接处理，让KaTeX后续渲染数学公式
 function renderMarkdown(text) {
 if (typeof marked === 'undefined') {
 return text.replace(/\n/g, '<br>');
 }
 
 try {
-// 保护数学公式不被Markdown处理
-const mathPlaceholders = [];
-let processedText = text;
-
-// 先提取并保护块级数学公式 $$...$$
-processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'block'
-});
-return placeholder;
-});
-
-// 再提取并保护行内数学公式 $...$
-processedText = processedText.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
-const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'inline'
-});
-return placeholder;
-});
-
-// 保护 \(...\) 和 \[...\] 格式
-processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
-const placeholder = `__MATH_INLINE_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'inline'
-});
-return placeholder;
-});
-
-processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
-const placeholder = `__MATH_BLOCK_${mathPlaceholders.length}__`;
-mathPlaceholders.push({
-placeholder: placeholder,
-original: match,
-type: 'block'
-});
-return placeholder;
-});
+console.log('渲染Markdown文本:', text.substring(0, 100) + '...');
 
 // 配置marked选项
 marked.setOptions({
@@ -539,13 +494,9 @@ gfm: true,
 sanitize: false
 });
 
-// 渲染Markdown
-let rendered = marked.parse(processedText);
-
-// 恢复数学公式
-mathPlaceholders.forEach(item => {
-rendered = rendered.replace(item.placeholder, item.original);
-});
+// 直接渲染Markdown，不进行复杂的占位符处理
+// 让KaTeX在后续步骤中直接处理数学公式
+let rendered = marked.parse(text);
 
 // 使用DOMPurify清理HTML以防止XSS攻击
 rendered = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rendered, {
@@ -553,11 +504,31 @@ ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac
 ADD_ATTR: ['class', 'style']
 }) : rendered;
 
+// 清理任何可能的占位符残留
+rendered = cleanupMathPlaceholders(rendered);
+
+console.log('最终渲染结果预览:', rendered.substring(0, 200) + '...');
 return rendered;
 } catch (error) {
 console.error('Markdown渲染错误:', error);
 return text.replace(/\n/g, '<br>');
 }
+}
+
+// 清理数学公式占位符的辅助函数
+function cleanupMathPlaceholders(text) {
+// 移除所有形如 MATH_BLOCK_N 或 MATH_INLINE_N 的占位符
+text = text.replace(/MATH_(BLOCK|INLINE)_\d+/g, '[数学公式]');
+// 移除所有形如 __MATH_BLOCK_N__ 或 __MATH_INLINE_N__ 的占位符
+text = text.replace(/__MATH_(BLOCK|INLINE)_\d+__/g, '[数学公式]');
+return text;
+}
+
+// 这些函数已经不再需要，因为我们简化了渲染逻辑
+
+// 转义正则表达式特殊字符
+function escapeRegExp(string) {
+return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // 数学公式渲染配置
@@ -575,26 +546,48 @@ strict: false
 
 // 等待KaTeX加载完成的函数
 function waitForKaTeX() {
-return new Promise((resolve) => {
+return new Promise((resolve, reject) => {
 if (typeof window.renderMathInElement === 'function') {
 resolve();
-} else {
+return;
+}
+
+let attempts = 0;
+const maxAttempts = 50; // 5秒超时
 const checkKaTeX = setInterval(() => {
+attempts++;
+console.log(`检查KaTeX加载状态，尝试 ${attempts}/${maxAttempts}`, typeof window.renderMathInElement);
+
 if (typeof window.renderMathInElement === 'function') {
 clearInterval(checkKaTeX);
+console.log('✅ KaTeX加载完成');
 resolve();
+} else if (attempts >= maxAttempts) {
+clearInterval(checkKaTeX);
+console.error('❌ KaTeX加载超时');
+reject(new Error('KaTeX加载超时'));
 }
 }, 100);
-}
 });
 }
 
 // 安全渲染数学公式
 async function renderMathSafely(element) {
 try {
+console.log('开始渲染数学公式，元素:', element);
+console.log('元素内容:', element ? element.innerHTML : 'null');
+console.log('KaTeX状态:', typeof window.renderMathInElement);
+
 await waitForKaTeX();
 if (element && typeof window.renderMathInElement === 'function') {
+console.log('调用renderMathInElement，配置:', mathConfig);
 window.renderMathInElement(element, mathConfig);
+console.log('数学公式渲染完成');
+} else {
+console.warn('无法渲染数学公式:', {
+element: !!element,
+renderMathInElement: typeof window.renderMathInElement
+});
 }
 } catch (error) {
 console.error('数学公式渲染错误:', error);
@@ -614,6 +607,22 @@ const searchToggle = document.getElementById('search-toggle');
 window.isAIResponding = false;
 disableUserInput(false);
 
+// 数学公式库加载检查
+console.log('页面加载完成，检查数学公式库...');
+console.log('KaTeX:', typeof window.katex);
+console.log('renderMathInElement:', typeof window.renderMathInElement);
+
+// 延迟检查以确保所有defer脚本都加载完成
+setTimeout(() => {
+console.log('延迟检查 - KaTeX:', typeof window.katex);
+console.log('延迟检查 - renderMathInElement:', typeof window.renderMathInElement);
+if (typeof window.renderMathInElement === 'function') {
+console.log('✅ KaTeX渲染函数可用');
+} else {
+console.error('❌ KaTeX渲染函数不可用');
+}
+}, 2000);
+
 // 页面卸载前清理状态
 window.addEventListener('beforeunload', function() {
   window.isAIResponding = false;
@@ -632,6 +641,24 @@ window.resetAIState = function() {
   console.log('手动重置AI响应状态');
   interruptAIResponse();
   showToast('AI状态已重置', 'success');
+};
+
+// 调试功能：手动渲染数学公式（在控制台中调用 debugRenderMath()）
+window.debugRenderMath = function() {
+  console.log('开始调试数学公式渲染...');
+  console.log('KaTeX状态:', typeof window.katex);
+  console.log('renderMathInElement状态:', typeof window.renderMathInElement);
+  
+  // 查找所有AI消息并尝试渲染
+  const aiMessages = document.querySelectorAll('.ai-content');
+  console.log('找到AI消息数量:', aiMessages.length);
+  
+  aiMessages.forEach((element, index) => {
+    console.log(`渲染消息 ${index + 1}:`, element.innerHTML);
+    renderMathSafely(element);
+  });
+  
+  return '数学公式调试完成，查看控制台输出';
 };
   // 按钮切换功能
   thinkingToggle.addEventListener('click', function() {
@@ -897,8 +924,12 @@ function typeWriterEffect(element, fullText) {
 const renderedText = renderMarkdown(fullText);
 element.innerHTML = renderedText;
 
-// 渲染数学公式
-renderMathSafely(element);
+// 简化策略：总是尝试渲染数学公式
+// 因为KaTeX会自动跳过没有数学公式的内容
+console.log('typeWriterEffect: 渲染数学公式');
+setTimeout(() => {
+    renderMathSafely(element);
+}, 50); // 短暂延迟确保DOM更新完成
 
 // 滚动到底部
 const chatContainer = document.getElementById('chat-content');
@@ -911,6 +942,15 @@ const cursor = element.parentElement.querySelector('.typing-cursor');
 if (cursor) {
 cursor.style.display = 'none';
 }
+
+// 最终渲染数学公式 - 确保所有公式都被正确渲染
+console.log('完成打字效果，强制渲染数学公式');
+console.log('最终内容:', element.innerHTML);
+
+// 多次尝试渲染以确保成功
+setTimeout(() => renderMathSafely(element), 100);
+setTimeout(() => renderMathSafely(element), 500);
+setTimeout(() => renderMathSafely(element), 1000);
 }
 
 // 显示中断提示

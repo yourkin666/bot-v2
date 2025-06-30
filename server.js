@@ -26,7 +26,9 @@ app.get('/webpage', (req, res) => {
   res.sendFile(path.join(__dirname, 'webpage.html'));
 });
 
-// 搜索测试页面路由已移除
+app.get('/test-math', (req, res) => {
+  res.sendFile(path.join(__dirname, 'test-math.html'));
+});
 
 // 启动服务器
 app.listen(PORT, () => {
