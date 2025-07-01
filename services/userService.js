@@ -16,12 +16,12 @@ class UserService {
   async init() {
     try {
       await fs.ensureDir(this.dataDir);
-      
+
       // 初始化用户文件
       if (!await fs.pathExists(this.usersFile)) {
         await fs.writeJson(this.usersFile, {});
       }
-      
+
       // 初始化验证码文件
       if (!await fs.pathExists(this.verificationCodesFile)) {
         await fs.writeJson(this.verificationCodesFile, {});
@@ -84,7 +84,7 @@ class UserService {
         expiresAt: new Date(Date.now() + config.auth.verificationCodeExpiry).toISOString(),
         used: false
       };
-      
+
       await fs.writeJson(this.verificationCodesFile, codes, { spaces: 2 });
       console.log(`📧 验证码已保存: ${email} -> ${code}`);
       return true;
@@ -109,31 +109,31 @@ class UserService {
     try {
       const codes = await this.getVerificationCodes();
       const codeData = codes[email];
-      
+
       if (!codeData) {
-        return { success: false, message: '验证码不存在或已过期' };
+        return { success: false, message: '小朋友，验证码好像不对或者过期了呢，重新获取一个试试吧！' };
       }
-      
+
       if (codeData.used) {
-        return { success: false, message: '验证码已使用' };
+        return { success: false, message: '小朋友，这个验证码已经用过了呢，重新获取一个新的吧！' };
       }
-      
+
       if (new Date() > new Date(codeData.expiresAt)) {
-        return { success: false, message: '验证码已过期' };
+        return { success: false, message: '小朋友，验证码超时了呢，重新获取一个新的试试吧！' };
       }
-      
+
       if (codeData.code !== inputCode) {
-        return { success: false, message: '验证码错误' };
+        return { success: false, message: '小朋友，验证码好像不太对呢，仔细检查一下邮箱里的数字吧！' };
       }
-      
+
       // 标记验证码为已使用
       codeData.used = true;
       await fs.writeJson(this.verificationCodesFile, codes, { spaces: 2 });
-      
-      return { success: true, message: '验证码验证成功' };
+
+      return { success: true, message: '太棒了！验证码正确！' };
     } catch (error) {
       console.error('验证码验证失败:', error);
-      return { success: false, message: '验证失败，请重试' };
+      return { success: false, message: '小朋友，验证时遇到了小问题，我们再试一次吧！' };
     }
   }
 
@@ -143,14 +143,14 @@ class UserService {
       const codes = await this.getVerificationCodes();
       const now = new Date();
       let cleaned = 0;
-      
+
       for (const email in codes) {
         if (new Date(codes[email].expiresAt) < now) {
           delete codes[email];
           cleaned++;
         }
       }
-      
+
       if (cleaned > 0) {
         await fs.writeJson(this.verificationCodesFile, codes, { spaces: 2 });
         console.log(`🧹 清理了 ${cleaned} 个过期验证码`);
@@ -165,7 +165,7 @@ class UserService {
     try {
       // 验证邮箱格式
       if (!this.isValidEmail(email)) {
-        return { success: false, message: '邮箱格式不正确' };
+        return { success: false, message: '小朋友，邮箱地址好像写得不太对呢，记得要有@符号哦！' };
       }
 
       // 验证验证码
@@ -177,7 +177,7 @@ class UserService {
       // 检查用户是否已存在
       const existingUser = await this.getUserByEmail(email);
       if (existingUser) {
-        return { success: false, message: '该邮箱已注册' };
+        return { success: false, message: '小朋友，这个邮箱已经有其他小朋友在用了呢，换一个试试吧！' };
       }
 
       // 密码加密
@@ -201,13 +201,13 @@ class UserService {
       await fs.writeJson(this.usersFile, users, { spaces: 2 });
 
       console.log(`✅ 新用户注册成功: ${email}`);
-      
+
       // 生成JWT token
       const token = this.generateJWTToken(newUser);
-      
-      return { 
-        success: true, 
-        message: '注册成功',
+
+      return {
+        success: true,
+        message: '哇！注册成功啦！欢迎小朋友加入AI小子大家庭！',
         user: {
           id: newUser.id,
           email: newUser.email,
@@ -218,7 +218,7 @@ class UserService {
       };
     } catch (error) {
       console.error('用户注册失败:', error);
-      return { success: false, message: '注册失败，请重试' };
+      return { success: false, message: '小朋友，注册时遇到了小问题，等一下再试试好吗？' };
     }
   }
 
@@ -227,19 +227,19 @@ class UserService {
     try {
       // 验证邮箱格式
       if (!this.isValidEmail(email)) {
-        return { success: false, message: '邮箱格式不正确' };
+        return { success: false, message: '小朋友，邮箱地址好像写得不太对呢，记得要有@符号哦！' };
       }
 
       // 获取用户
       const user = await this.getUserByEmail(email.toLowerCase());
       if (!user) {
-        return { success: false, message: '用户不存在' };
+        return { success: false, message: '小朋友，这个邮箱还没有注册过呢，先去注册一个账户吧！' };
       }
 
       // 验证密码
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return { success: false, message: '密码错误' };
+        return { success: false, message: '小朋友，密码好像不太对呢，仔细想想看哦！' };
       }
 
       // 更新最后登录时间
@@ -249,13 +249,13 @@ class UserService {
       await fs.writeJson(this.usersFile, users, { spaces: 2 });
 
       console.log(`🔐 用户登录成功: ${email}`);
-      
+
       // 生成JWT token
       const token = this.generateJWTToken(user);
-      
-      return { 
-        success: true, 
-        message: '登录成功',
+
+      return {
+        success: true,
+        message: '耶！登录成功啦！欢迎回来~',
         user: {
           id: user.id,
           email: user.email,
@@ -267,7 +267,7 @@ class UserService {
       };
     } catch (error) {
       console.error('用户登录失败:', error);
-      return { success: false, message: '登录失败，请重试' };
+      return { success: false, message: '小朋友，登录时遇到了小问题，等一下再试试好吗？' };
     }
   }
 
@@ -278,9 +278,9 @@ class UserService {
       email: user.email,
       isVerified: user.isVerified
     };
-    
-    return jwt.sign(payload, config.auth.jwtSecret, { 
-      expiresIn: config.auth.jwtExpiresIn 
+
+    return jwt.sign(payload, config.auth.jwtSecret, {
+      expiresIn: config.auth.jwtExpiresIn
     });
   }
 
@@ -300,7 +300,7 @@ class UserService {
       const users = await this.getAllUsers();
       const userCount = Object.keys(users).length;
       const verifiedCount = Object.values(users).filter(user => user.isVerified).length;
-      
+
       return {
         totalUsers: userCount,
         verifiedUsers: verifiedCount,

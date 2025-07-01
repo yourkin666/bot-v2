@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+const passport = require('passport');
 const config = require('./config');
 const chatRoutes = require('./routes/chat');
 const searchRoutes = require('./routes/search');
@@ -35,6 +36,10 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24小时
   }
 }));
+
+// Passport初始化
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(express.static(path.join(__dirname)));
 

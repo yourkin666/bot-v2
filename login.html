@@ -4,24 +4,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI小子 - 登录注册</title>
+    <title>AI小子 - 登录</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FFB7C5 0%, #87CEEB 30%, #DDA0DD 60%, #98FB98 100%);
         }
 
-        .glass-effect {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .logo-container {
+            background: linear-gradient(45deg, #FF6B9D, #4ECDC4);
+            box-shadow: 0 10px 25px rgba(255, 107, 157, 0.4);
+            border-radius: 20px;
+            transform: rotate(-3deg);
+            transition: transform 0.3s ease;
         }
 
-        .input-focus:focus {
+        .logo-container:hover {
+            transform: rotate(3deg) scale(1.05);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #FFB7C5;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            color: #333;
+        }
+
+        .input-field:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #FF6B9D;
+            box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.2);
+            background: rgba(255, 255, 255, 0.95);
+            transform: translateY(-2px);
+        }
+
+        .input-field::placeholder {
+            color: #999;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, #FF6B9D, #4ECDC4);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .primary-btn:hover {
+            background: linear-gradient(135deg, #FF8FA3, #5FD4C7);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 157, 0.4);
+        }
+
+        .primary-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .oauth-btn {
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid #87CEEB;
+            border-radius: 15px;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .oauth-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #4ECDC4;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .divider {
+            background: linear-gradient(90deg, transparent, #FFB7C5, #87CEEB, #DDA0DD, transparent);
+            height: 2px;
+            border-radius: 1px;
         }
 
         .loading-spinner {
@@ -37,86 +109,141 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* 消息框增强样式 */
+        #message,
+        #register-message {
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 强制显示消息文字 */
+        #message-text,
+        #register-message-text {
+            display: block !important;
+            color: inherit !important;
+            font-size: 14px !important;
+            line-height: 1.4 !important;
+            font-weight: 500 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            min-height: 20px !important;
+        }
+
+        /* 消息容器强化 */
+        .message-error,
+        .message-success,
+        .message-info {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            min-height: 40px !important;
+            padding: 12px !important;
+        }
+
+        /* 消息类型样式强化 */
+        .message-error {
+            background: linear-gradient(135deg, #FFEBEE, #FFCDD2) !important;
+            color: #C62828 !important;
+            border: 2px solid #EF5350 !important;
+            border-radius: 15px !important;
+        }
+
+        .message-error #register-message-text,
+        .message-error #message-text {
+            color: #C62828 !important;
+        }
+
+        .message-success {
+            background: linear-gradient(135deg, #E8F5E8, #C8E6C9) !important;
+            color: #2E7D32 !important;
+            border: 2px solid #66BB6A !important;
+            border-radius: 15px !important;
+        }
+
+        .message-success #register-message-text,
+        .message-success #message-text {
+            color: #2E7D32 !important;
+        }
+
+        .message-info {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB) !important;
+            color: #1565C0 !important;
+            border: 2px solid #42A5F5 !important;
+            border-radius: 15px !important;
+        }
+
+        .message-info #register-message-text,
+        .message-info #message-text {
+            color: #1565C0 !important;
+        }
     </style>
 </head>
 
-<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
-    <div class="glass-effect rounded-2xl p-8 w-full max-w-md shadow-2xl">
-        <!-- 头部 -->
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-8 w-full max-w-md">
+        <!-- Logo 和标题 -->
         <div class="text-center mb-8">
-            <div class="mb-4 flex justify-center">
-                <div
-                    class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-200/30 overflow-hidden">
-                    <img src="image/AI 小子.png" alt="AI小子Logo" class="w-14 h-14 object-contain">
-                </div>
+            <div class="logo-container w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                <img src="image/AI 小子.png" alt="AI小子Logo" class="w-12 h-12 object-contain">
             </div>
-            <h1 class="text-3xl font-bold text-white mb-2">AI小子</h1>
-            <p class="text-blue-100" id="subtitle">欢迎回来！请登录您的账户</p>
-        </div>
-
-        <!-- 切换按钮 -->
-        <div class="flex bg-white bg-opacity-10 rounded-lg p-1 mb-6">
-            <button id="login-tab"
-                class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all">
-                登录
-            </button>
-            <button id="register-tab"
-                class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all">
-                注册
-            </button>
+            <h1 class="text-3xl font-bold mb-2"
+                style="background: linear-gradient(135deg, #FF6B9D, #4ECDC4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                登录</h1>
         </div>
 
         <!-- 登录表单 -->
-        <form id="login-form" class="space-y-4">
+        <form id="login-form" class="space-y-6">
+            <!-- 邮箱输入 -->
             <div>
-                <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
-                <input type="email" id="login-email"
-                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
-                    placeholder="请输入您的邮箱" required>
+                <label class="block text-sm font-bold text-gray-700 mb-2">邮箱</label>
+                <input type="email" id="email" class="input-field w-full px-4 py-3 rounded-lg" placeholder="请输入您的邮箱地址"
+                    required>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
-                <input type="password" id="login-password"
-                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
-                    placeholder="请输入您的密码" required>
+
+            <!-- 密码输入 (初始隐藏，点击Continue后显示) -->
+            <div id="password-field" class="hidden">
+                <label class="block text-sm font-bold text-gray-700 mb-2">密码</label>
+                <input type="password" id="password" class="input-field w-full px-4 py-3 rounded-lg"
+                    placeholder="请输入您的密码">
             </div>
-            <button type="submit" id="login-btn"
-                class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
-                <span>登录</span>
+
+            <!-- Continue/Login 按钮 -->
+            <button type="submit" id="continue-btn" class="primary-btn w-full py-3 px-4 rounded-lg font-medium">
+                继续
             </button>
         </form>
 
-        <!-- 注册表单 -->
-        <form id="register-form" class="space-y-4 hidden">
-            <div>
-                <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
-                <input type="email" id="register-email"
-                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
-                    placeholder="请输入您的邮箱" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
-                <input type="password" id="register-password"
-                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
-                    placeholder="密码至少6位" required minlength="6">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-blue-100 mb-2">验证码</label>
-                <div class="flex gap-2">
-                    <input type="text" id="verification-code"
-                        class="flex-1 px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
-                        placeholder="请输入验证码" required maxlength="6">
-                    <button type="button" id="send-code-btn"
-                        class="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                        发送验证码
-                    </button>
-                </div>
-            </div>
-            <button type="submit" id="register-btn"
-                class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
-                <span>注册</span>
+        <!-- 分隔线 -->
+        <div class="flex items-center my-6">
+            <div class="divider flex-1"></div>
+            <span class="px-4 text-gray-600 text-sm font-bold">或者</span>
+            <div class="divider flex-1"></div>
+        </div>
+
+        <!-- OAuth 登录按钮 -->
+        <div class="space-y-3">
+            <button id="google-login"
+                class="oauth-btn w-full py-3 px-4 rounded-lg flex items-center justify-center font-medium">
+                <i class="fab fa-google mr-3 text-lg" style="color: #FF6B9D;"></i>
+                使用 Google 登录
             </button>
-        </form>
+
+            <button id="github-login"
+                class="oauth-btn w-full py-3 px-4 rounded-lg flex items-center justify-center font-medium">
+                <i class="fab fa-github mr-3 text-lg" style="color: #4ECDC4;"></i>
+                使用 GitHub 登录
+            </button>
+        </div>
+
+        <!-- 注册链接 -->
+        <div class="text-center mt-6">
+            <span class="text-gray-600 text-sm">没有账户？ </span>
+            <button id="signup-link" class="text-pink-500 text-sm font-bold hover:text-pink-400 transition-colors">
+                立即注册
+            </button>
+        </div>
 
         <!-- 错误/成功消息 -->
         <div id="message" class="mt-4 p-3 rounded-lg hidden">
@@ -128,66 +255,135 @@
 
         <!-- 已登录状态提示 -->
         <div id="logged-in-status" class="hidden text-center">
-            <div class="bg-green-100 text-green-800 p-4 rounded-lg mb-4">
-                <i class="ri-check-circle-fill mr-2"></i>
-                您已登录，正在跳转到主页面...
+            <div class="message-success p-4 mb-4">
+                <i class="fas fa-check-circle mr-2"></i>
+                登录成功，正在跳转到主页面...
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div id="signup-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl p-8 w-full max-w-md">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold mb-2"
+                    style="background: linear-gradient(135deg, #FF6B9D, #4ECDC4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                    创建账户</h2>
+                <p class="text-gray-600 font-medium">加入 AI小子 大家庭</p>
+            </div>
+
+            <!-- 注册页面消息 -->
+            <div id="register-message" class="mb-4 p-3 rounded-lg hidden">
+                <div class="flex items-center">
+                    <i id="register-message-icon" class="mr-2"></i>
+                    <span id="register-message-text"></span>
+                </div>
+            </div>
+
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">邮箱</label>
+                    <input type="email" id="register-email" class="input-field w-full px-4 py-3 rounded-lg"
+                        placeholder="请输入您的邮箱地址" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">密码</label>
+                    <input type="password" id="register-password" class="input-field w-full px-4 py-3 rounded-lg"
+                        placeholder="创建密码（至少6位）" required minlength="6">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">验证码</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="verification-code" class="input-field flex-1 px-4 py-3 rounded-lg"
+                            placeholder="请输入验证码" required maxlength="6">
+                        <button type="button" id="send-code-btn"
+                            class="oauth-btn px-4 py-3 rounded-lg whitespace-nowrap font-bold">
+                            发送验证码
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="register-btn" class="primary-btn w-full py-3 px-4 rounded-lg font-medium">
+                    创建账户
+                </button>
+            </form>
+
+            <div class="text-center mt-6">
+                <button id="back-to-login"
+                    class="text-gray-600 text-sm font-medium hover:text-pink-500 transition-colors">
+                    返回登录
+                </button>
+
+
             </div>
         </div>
     </div>
 
     <script>
         // DOM 元素
-        const loginTab = document.getElementById('login-tab');
-        const registerTab = document.getElementById('register-tab');
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
-        const subtitle = document.getElementById('subtitle');
+        const continueBtn = document.getElementById('continue-btn');
+        const passwordField = document.getElementById('password-field');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const signupModal = document.getElementById('signup-modal');
+        const signupLink = document.getElementById('signup-link');
+        const backToLogin = document.getElementById('back-to-login');
         const sendCodeBtn = document.getElementById('send-code-btn');
         const messageEl = document.getElementById('message');
         const messageIcon = document.getElementById('message-icon');
         const messageText = document.getElementById('message-text');
+        const registerMessageEl = document.getElementById('register-message');
+        const registerMessageIcon = document.getElementById('register-message-icon');
+        const registerMessageText = document.getElementById('register-message-text');
         const loggedInStatus = document.getElementById('logged-in-status');
 
-        // 切换标签
-        loginTab.addEventListener('click', () => {
-            switchToLogin();
+        let isPasswordVisible = false;
+
+        // 显示/隐藏模态框
+        signupLink.addEventListener('click', () => {
+            signupModal.classList.remove('hidden');
+            hideRegisterMessage(); // 清理之前的消息
         });
 
-        registerTab.addEventListener('click', () => {
-            switchToRegister();
+        backToLogin.addEventListener('click', () => {
+            signupModal.classList.add('hidden');
+            hideMessage();
+            hideRegisterMessage();
         });
 
-        function switchToLogin() {
-            loginTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all';
-            registerTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all';
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-            subtitle.textContent = '欢迎回来！请登录您的账户';
-            hideMessage();
-        }
+        // 点击模态框外部关闭
+        signupModal.addEventListener('click', (e) => {
+            if (e.target === signupModal) {
+                signupModal.classList.add('hidden');
+                hideMessage();
+                hideRegisterMessage();
+            }
+        });
 
-        function switchToRegister() {
-            registerTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all';
-            loginTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all';
-            registerForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-            subtitle.textContent = '创建您的AI小子账户';
-            hideMessage();
-        }
-
-        // 消息显示
+        // 消息显示函数
         function showMessage(text, type = 'info') {
-            messageEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            // 检查参数有效性
+            if (!text || text === 'undefined' || text === undefined) {
+                console.error('无效的消息文本:', text);
+                text = '小朋友，这里好像出了点小问题呢，我们再试一次好吗？';
+            }
+
+            messageEl.classList.remove('hidden', 'message-error', 'message-success', 'message-info');
 
             if (type === 'error') {
-                messageEl.classList.add('bg-red-100', 'text-red-800');
-                messageIcon.className = 'ri-error-warning-fill mr-2';
+                messageEl.classList.add('message-error');
+                messageIcon.className = 'fas fa-exclamation-circle mr-2';
             } else if (type === 'success') {
-                messageEl.classList.add('bg-green-100', 'text-green-800');
-                messageIcon.className = 'ri-check-circle-fill mr-2';
+                messageEl.classList.add('message-success');
+                messageIcon.className = 'fas fa-check-circle mr-2';
             } else {
-                messageEl.classList.add('bg-blue-100', 'text-blue-800');
-                messageIcon.className = 'ri-information-fill mr-2';
+                messageEl.classList.add('message-info');
+                messageIcon.className = 'fas fa-info-circle mr-2';
             }
 
             messageText.textContent = text;
@@ -197,14 +393,91 @@
             messageEl.classList.add('hidden');
         }
 
+        // 注册页面消息显示函数
+        function showRegisterMessage(text, type = 'info') {
+            console.log('显示注册消息:', text, type);
+
+            // 检查参数有效性
+            if (!text || text === 'undefined' || text === undefined) {
+                console.error('无效的消息文本:', text);
+                text = '小朋友，这里好像出了点小问题呢，我们再试一次好吗？';
+            }
+
+            // 确保元素存在
+            if (!registerMessageEl || !registerMessageIcon || !registerMessageText) {
+                console.error('注册消息元素不存在');
+                return;
+            }
+
+            // 首先移除隐藏类和之前的消息类型
+            registerMessageEl.classList.remove('hidden', 'message-error', 'message-success', 'message-info');
+
+            // 强制显示元素
+            registerMessageEl.style.display = 'block';
+            registerMessageEl.style.visibility = 'visible';
+            registerMessageEl.style.opacity = '1';
+
+            // 设置消息类型样式
+            if (type === 'error') {
+                registerMessageEl.classList.add('message-error');
+                registerMessageIcon.className = 'fas fa-exclamation-circle mr-2';
+                registerMessageIcon.style.color = '#C62828';
+            } else if (type === 'success') {
+                registerMessageEl.classList.add('message-success');
+                registerMessageIcon.className = 'fas fa-check-circle mr-2';
+                registerMessageIcon.style.color = '#2E7D32';
+            } else {
+                registerMessageEl.classList.add('message-info');
+                registerMessageIcon.className = 'fas fa-info-circle mr-2';
+                registerMessageIcon.style.color = '#1565C0';
+            }
+
+            // 强制设置文字内容和样式
+            registerMessageText.textContent = text;
+            registerMessageText.innerHTML = text; // 双重保险
+            registerMessageText.style.display = 'block';
+            registerMessageText.style.visibility = 'visible';
+            registerMessageText.style.opacity = '1';
+            registerMessageText.style.fontSize = '14px';
+            registerMessageText.style.fontWeight = '500';
+
+            // 确保文字颜色正确显示
+            if (type === 'error') {
+                registerMessageText.style.color = '#C62828';
+            } else if (type === 'success') {
+                registerMessageText.style.color = '#2E7D32';
+            } else {
+                registerMessageText.style.color = '#1565C0';
+            }
+
+            console.log('消息元素更新完成:', {
+                text: registerMessageText.textContent,
+                innerHTML: registerMessageText.innerHTML,
+                classes: registerMessageEl.className,
+                visible: !registerMessageEl.classList.contains('hidden'),
+                display: registerMessageEl.style.display,
+                textColor: registerMessageText.style.color
+            });
+
+            // 滚动到消息位置
+            registerMessageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideRegisterMessage() {
+            if (registerMessageEl) {
+                registerMessageEl.classList.add('hidden');
+                registerMessageEl.style.display = 'none';
+            }
+        }
+
         // 设置按钮加载状态
         function setButtonLoading(button, isLoading, originalText) {
             if (isLoading) {
                 button.disabled = true;
-                button.innerHTML = `<i class="ri-loader-4-line loading-spinner mr-2"></i>处理中...`;
+                button.innerHTML = `<i class="fas fa-spinner loading-spinner mr-2"></i>小AI正在努力工作中...`;
             } else {
                 button.disabled = false;
-                button.innerHTML = `<span>${originalText}</span>`;
+                button.innerHTML = originalText;
             }
         }
 
@@ -216,7 +489,7 @@
 
             const updateButton = () => {
                 if (remaining > 0) {
-                    sendCodeBtn.textContent = `${remaining}秒后重发`;
+                    sendCodeBtn.textContent = `${remaining}秒后可以再发一次哦`;
                     remaining--;
                     countdownTimer = setTimeout(updateButton, 1000);
                 } else {
@@ -229,24 +502,10 @@
             updateButton();
         }
 
-        // 发送验证码
-        sendCodeBtn.addEventListener('click', async () => {
-            const email = document.getElementById('register-email').value;
-
-            if (!email) {
-                showMessage('请先输入邮箱地址', 'error');
-                return;
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showMessage('请输入有效的邮箱地址', 'error');
-                return;
-            }
-
-            setButtonLoading(sendCodeBtn, true, '发送验证码');
-
+        // 检查邮箱是否已注册
+        async function checkEmailExists(email) {
             try {
-                const response = await fetch('/api/auth/send-verification-code', {
+                const response = await fetch('/api/auth/check-email', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -257,30 +516,69 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showMessage(result.message, 'success');
-                    startCountdown(60);
-                } else {
-                    showMessage(result.error, 'error');
+                    return result.data.exists;
                 }
+                return false;
             } catch (error) {
-                console.error('发送验证码失败:', error);
-                showMessage('网络错误，请稍后重试', 'error');
-            } finally {
-                if (!countdownTimer) {
-                    setButtonLoading(sendCodeBtn, false, '发送验证码');
-                }
+                console.error('Check email failed:', error);
+                return false;
             }
-        });
+        }
 
-        // 登录表单提交
+        // 登录表单处理
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const loginBtn = document.getElementById('login-btn');
+            const email = emailInput.value;
+            const password = passwordInput.value;
 
-            setButtonLoading(loginBtn, true, '登录');
+            // 如果密码字段未显示，先验证邮箱并检查是否已注册
+            if (!isPasswordVisible) {
+                if (!email) {
+                    showMessage('小朋友，记得要填写邮箱地址哦！', 'error');
+                    return;
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showMessage('小朋友，邮箱地址好像写得不太对呢，检查一下有没有@符号吧！', 'error');
+                    return;
+                }
+
+                // 显示加载状态
+                setButtonLoading(continueBtn, true, 'Continue');
+
+                // 检查邮箱是否已注册
+                const emailExists = await checkEmailExists(email);
+
+                if (emailExists) {
+                    // 邮箱已注册，显示密码字段
+                    passwordField.classList.remove('hidden');
+                    continueBtn.textContent = '登录';
+                    isPasswordVisible = true;
+                    passwordInput.focus();
+                    showMessage('哇！小朋友你回来啦！现在输入密码就可以进去玩了~', 'info');
+                } else {
+                    // 邮箱未注册，提示用户注册
+                    showMessage('小朋友，这个邮箱还没有注册过呢，我们先创建一个新账户吧！', 'info');
+                    setTimeout(() => {
+                        signupModal.classList.remove('hidden');
+                        hideRegisterMessage(); // 清理注册页面的消息
+                        document.getElementById('register-email').value = email;
+                        showRegisterMessage('太好了！现在我们来填写一些基本信息，马上就能开始玩了！', 'info');
+                    }, 1500);
+                }
+
+                setButtonLoading(continueBtn, false, continueBtn.textContent);
+                return;
+            }
+
+            // 执行登录
+            if (!password) {
+                showMessage('小朋友，还差一个密码就可以进去啦！', 'error');
+                return;
+            }
+
+            setButtonLoading(continueBtn, true, '登录');
 
             try {
                 const response = await fetch('/api/auth/login', {
@@ -298,7 +596,7 @@
                     localStorage.setItem('ai_token', result.data.token);
                     localStorage.setItem('ai_user', JSON.stringify(result.data.user));
 
-                    showMessage('登录成功，正在跳转...', 'success');
+                    showMessage('耶！登录成功啦！小AI马上带你去玩耍~', 'success');
 
                     // 显示成功状态并跳转
                     setTimeout(() => {
@@ -310,36 +608,79 @@
                         }, 1500);
                     }, 1000);
                 } else {
-                    showMessage(result.error, 'error');
+                    showMessage(result.error || result.message || '小朋友，登录时遇到了小问题，我们再试一次吧！', 'error');
                 }
             } catch (error) {
-                console.error('登录失败:', error);
-                showMessage('网络错误，请稍后重试', 'error');
+                console.error('Login failed:', error);
+                showMessage('小朋友，网络好像有点不稳定呢，等一下再试试好吗？', 'error');
             } finally {
-                setButtonLoading(loginBtn, false, '登录');
+                setButtonLoading(continueBtn, false, '登录');
             }
         });
 
-        // 注册表单提交
+        // 发送验证码
+        sendCodeBtn.addEventListener('click', async () => {
+            const email = document.getElementById('register-email').value;
+
+            if (!email) {
+                showRegisterMessage('小朋友，记得先填写邮箱地址哦！这样我们才能给你发验证码~', 'error');
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showRegisterMessage('小朋友，邮箱地址好像写得不太对呢，记得要有@符号哦！', 'error');
+                return;
+            }
+
+            setButtonLoading(sendCodeBtn, true, '发送验证码');
+
+            try {
+                const response = await fetch('/api/auth/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showRegisterMessage(result.message || '太棒了！验证码已经飞到你的邮箱里啦！快去看看吧~', 'success');
+                    startCountdown(60);
+                } else {
+                    showRegisterMessage(result.error || result.message || '哎呀，验证码发送遇到了小问题，我们再试一次吧！', 'error');
+                }
+            } catch (error) {
+                console.error('Send verification code failed:', error);
+                showRegisterMessage('小朋友，网络好像有点慢呢，等一下再试试好吗？', 'error');
+            } finally {
+                if (!countdownTimer) {
+                    setButtonLoading(sendCodeBtn, false, '发送验证码');
+                }
+            }
+        });
+
+        // 注册表单处理
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             const verificationCode = document.getElementById('verification-code').value;
-            const registerBtn = document.getElementById('register-btn');
 
             if (password.length < 6) {
-                showMessage('密码长度至少为6位', 'error');
+                showRegisterMessage('小朋友，密码要至少6位数哦！这样更安全呢~', 'error');
                 return;
             }
 
             if (!/^\d{6}$/.test(verificationCode)) {
-                showMessage('请输入6位数字验证码', 'error');
+                showRegisterMessage('小朋友，验证码要是6个数字哦！检查一下邮箱里的验证码吧~', 'error');
                 return;
             }
 
-            setButtonLoading(registerBtn, true, '注册');
+            const registerBtn = document.getElementById('register-btn');
+            setButtonLoading(registerBtn, true, '创建账户');
 
             try {
                 const response = await fetch('/api/auth/register', {
@@ -357,30 +698,85 @@
                     localStorage.setItem('ai_token', result.data.token);
                     localStorage.setItem('ai_user', JSON.stringify(result.data.user));
 
-                    showMessage('注册成功，正在跳转...', 'success');
+                    showRegisterMessage('哇！注册成功啦！欢迎加入AI小子大家庭！我们现在就去玩吧~', 'success');
 
                     // 显示成功状态并跳转
                     setTimeout(() => {
+                        signupModal.classList.add('hidden');
                         loggedInStatus.classList.remove('hidden');
-                        registerForm.style.display = 'none';
+                        loginForm.style.display = 'none';
 
                         setTimeout(() => {
                             window.location.href = '/';
                         }, 1500);
                     }, 1000);
                 } else {
-                    showMessage(result.error, 'error');
+                    showRegisterMessage(result.error || result.message || '小朋友，注册时遇到了小问题，我们再试一次吧！', 'error');
                 }
             } catch (error) {
-                console.error('注册失败:', error);
-                showMessage('网络错误，请稍后重试', 'error');
+                console.error('Registration failed:', error);
+                showRegisterMessage('小朋友，网络好像有点不稳定呢，等一下再试试好吗？', 'error');
             } finally {
-                setButtonLoading(registerBtn, false, '注册');
+                setButtonLoading(registerBtn, false, '创建账户');
             }
         });
 
+        // OAuth 登录处理
+        document.getElementById('google-login').addEventListener('click', () => {
+            window.location.href = '/api/auth/google';
+        });
+
+        document.getElementById('github-login').addEventListener('click', () => {
+            window.location.href = '/api/auth/github';
+        });
+
+        // 处理OAuth回调中的token参数
+        function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const userData = urlParams.get('user');
+
+            if (token && userData) {
+                try {
+                    const user = JSON.parse(decodeURIComponent(userData));
+
+                    // 保存token和用户信息
+                    localStorage.setItem('ai_token', token);
+                    localStorage.setItem('ai_user', JSON.stringify(user));
+
+                    showMessage('耶！登录成功啦！小AI马上带你去玩耍~', 'success');
+
+                    // 清理URL参数
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // 显示成功状态并跳转
+                    setTimeout(() => {
+                        loggedInStatus.classList.remove('hidden');
+                        loginForm.style.display = 'none';
+
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    }, 1000);
+                } catch (error) {
+                    console.error('OAuth callback parsing error:', error);
+                    showMessage('小朋友，登录时遇到了小问题，我们再试一次吧！', 'error');
+                }
+            }
+
+            const error = urlParams.get('error');
+            if (error === 'oauth_failed') {
+                showMessage('小朋友，第三方登录遇到了小问题，我们用其他方式试试吧！', 'error');
+                // 清理URL参数
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
         // 页面加载时检查登录状态
         window.addEventListener('load', () => {
+            // 首先处理OAuth回调
+            handleOAuthCallback();
+
             const token = localStorage.getItem('ai_token');
             const user = localStorage.getItem('ai_user');
 
@@ -388,7 +784,6 @@
                 // 已登录，直接跳转
                 loggedInStatus.classList.remove('hidden');
                 loginForm.style.display = 'none';
-                registerForm.style.display = 'none';
 
                 setTimeout(() => {
                     window.location.href = '/';
