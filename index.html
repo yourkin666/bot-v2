@@ -599,7 +599,23 @@ font-size: 3rem;
 </div>
 <!-- 底部功能区 -->
 <div class="p-3 border-t border-gray-100 space-y-2">
-<!-- 功能区域预留，可以添加其他工具 -->
+	<!-- 用户信息 -->
+	<div class="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+		<div class="flex items-center gap-2">
+			<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+				<i class="ri-user-3-line text-white text-sm"></i>
+			</div>
+			<div class="min-w-0 flex-1">
+				<div id="user-display" class="text-sm font-medium text-gray-700 truncate">
+					加载中...
+				</div>
+				<div class="text-xs text-gray-500">已登录</div>
+			</div>
+		</div>
+		<button onclick="logout()" class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors" title="登出">
+			<i class="ri-logout-box-line text-sm"></i>
+		</button>
+	</div>
 </div>
 </div>
 <!-- 中间聊天区域 -->
@@ -794,6 +810,101 @@ return Promise.resolve();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+	// 认证相关变量
+	let currentUser = null;
+	let authToken = null;
+
+	// 检查用户登录状态
+	function checkAuthStatus() {
+		const token = localStorage.getItem('ai_token');
+		const user = localStorage.getItem('ai_user');
+		
+		if (!token || !user) {
+			// 未登录，跳转到登录页面
+			window.location.href = '/login.html';
+			return false;
+		}
+		
+		try {
+			authToken = token;
+			currentUser = JSON.parse(user);
+			console.log('用户已登录:', currentUser.email);
+			
+			// 更新用户界面显示
+			updateUserUI();
+			return true;
+		} catch (error) {
+			console.error('解析用户信息失败:', error);
+			// 清除无效数据并跳转到登录页
+			localStorage.removeItem('ai_token');
+			localStorage.removeItem('ai_user');
+			window.location.href = '/login.html';
+			return false;
+		}
+	}
+
+	// 更新用户界面
+	function updateUserUI() {
+		if (!currentUser) return;
+		
+		// 显示用户邮箱（可以添加到页面头部）
+		const userDisplay = document.getElementById('user-display');
+		if (userDisplay) {
+			userDisplay.textContent = currentUser.email;
+		}
+		
+		// 更新欢迎消息
+		const welcomeMsg = document.querySelector('#welcome-message h2');
+		if (welcomeMsg) {
+			welcomeMsg.textContent = `你好，${currentUser.email.split('@')[0]}！`;
+		}
+	}
+
+	// API请求辅助函数
+	function getAuthHeaders() {
+		return {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${authToken}`
+		};
+	}
+
+	// 处理认证错误
+	function handleAuthError(error) {
+		console.error('认证错误:', error);
+		
+		// 如果是token无效，清除登录状态并跳转
+		if (error.code === 'TOKEN_INVALID' || error.code === 'TOKEN_MISSING') {
+			localStorage.removeItem('ai_token');
+			localStorage.removeItem('ai_user');
+			alert('登录已过期，请重新登录');
+			window.location.href = '/login.html';
+		}
+	}
+
+	// 登出功能
+	window.logout = async function() {
+		try {
+			// 调用登出API
+			await fetch('/api/auth/logout', {
+				method: 'POST',
+				headers: getAuthHeaders()
+			});
+		} catch (error) {
+			console.error('登出API调用失败:', error);
+		} finally {
+			// 清除本地存储
+			localStorage.removeItem('ai_token');
+			localStorage.removeItem('ai_user');
+			// 跳转到登录页面
+			window.location.href = '/login.html';
+		}
+	};
+
+	// 初始化认证检查
+	if (!checkAuthStatus()) {
+		return; // 如果未认证，不继续执行后续代码
+	}
+
 	const messageInput = document.querySelector('.message-input');
 	const sendButton = document.getElementById('send-button');
 	const voiceButton = document.getElementById('voice-button');
@@ -1245,9 +1356,7 @@ const aiMessageElement = showTypingMessage();
 // 使用流式接口
 const response = await fetch('/api/chat/stream', {
 method: 'POST',
-headers: {
-'Content-Type': 'application/json',
-},
+headers: getAuthHeaders(),
 body: JSON.stringify({
 message: message,
       chatId: window.currentChatId,
@@ -1715,10 +1824,14 @@ arrowIcon.classList.replace('ri-arrow-up-s-line', 'ri-arrow-down-s-line');
 // 加载聊天历史
 async function loadChatHistory() {
 try {
-const response = await fetch('/api/chat/history');
+const response = await fetch('/api/chat/history', {
+headers: getAuthHeaders()
+});
 const result = await response.json();
 if (result.success) {
 updateHistoryList(result.data);
+} else if (result.error && (result.error.includes('令牌') || result.error.includes('登录'))) {
+handleAuthError(result);
 }
 } catch (error) {
 console.error('加载历史失败:', error);
@@ -1910,12 +2023,16 @@ deleteButtons.forEach(button => {
 // 加载特定聊天的消息
 async function loadChatMessages(chatId) {
 try {
-  const response = await fetch(`/api/chat/${chatId}`);
+  const response = await fetch(`/api/chat/${chatId}`, {
+    headers: getAuthHeaders()
+  });
   const result = await response.json();
   if (result.success) {
     displayChatMessages(result.data.messages);
     // 设置当前聊天ID
     window.currentChatId = chatId;
+  } else if (result.error && (result.error.includes('令牌') || result.error.includes('登录'))) {
+    handleAuthError(result);
   }
 } catch (error) {
   console.error('加载聊天消息失败:', error);
@@ -2280,7 +2397,8 @@ try {
   deleteBtn.disabled = true;
   
   const response = await fetch(`/api/chat/${chatId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: getAuthHeaders()
   });
   
   const result = await response.json();

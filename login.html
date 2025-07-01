@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI小子 - 登录注册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .input-focus:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="glass-effect rounded-2xl p-8 w-full max-w-md shadow-2xl">
+        <!-- 头部 -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">🤖 AI小子</h1>
+            <p class="text-blue-100" id="subtitle">欢迎回来！请登录您的账户</p>
+        </div>
+
+        <!-- 切换按钮 -->
+        <div class="flex bg-white bg-opacity-10 rounded-lg p-1 mb-6">
+            <button id="login-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all">
+                登录
+            </button>
+            <button id="register-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all">
+                注册
+            </button>
+        </div>
+
+        <!-- 登录表单 -->
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
+                <input type="email" id="login-email" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的邮箱" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
+                <input type="password" id="login-password" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的密码" required>
+            </div>
+            <button type="submit" id="login-btn" class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
+                <span>登录</span>
+            </button>
+        </form>
+
+        <!-- 注册表单 -->
+        <form id="register-form" class="space-y-4 hidden">
+            <div>
+                <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
+                <input type="email" id="register-email" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的邮箱" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
+                <input type="password" id="register-password" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="密码至少6位" required minlength="6">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-blue-100 mb-2">验证码</label>
+                <div class="flex gap-2">
+                    <input type="text" id="verification-code" class="flex-1 px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入验证码" required maxlength="6">
+                    <button type="button" id="send-code-btn" class="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                        发送验证码
+                    </button>
+                </div>
+            </div>
+            <button type="submit" id="register-btn" class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
+                <span>注册</span>
+            </button>
+        </form>
+
+        <!-- 错误/成功消息 -->
+        <div id="message" class="mt-4 p-3 rounded-lg hidden">
+            <div class="flex items-center">
+                <i id="message-icon" class="mr-2"></i>
+                <span id="message-text"></span>
+            </div>
+        </div>
+
+        <!-- 已登录状态提示 -->
+        <div id="logged-in-status" class="hidden text-center">
+            <div class="bg-green-100 text-green-800 p-4 rounded-lg mb-4">
+                <i class="ri-check-circle-fill mr-2"></i>
+                您已登录，正在跳转到主页面...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const subtitle = document.getElementById('subtitle');
+        const sendCodeBtn = document.getElementById('send-code-btn');
+        const messageEl = document.getElementById('message');
+        const messageIcon = document.getElementById('message-icon');
+        const messageText = document.getElementById('message-text');
+        const loggedInStatus = document.getElementById('logged-in-status');
+
+        // 切换标签
+        loginTab.addEventListener('click', () => {
+            switchToLogin();
+        });
+
+        registerTab.addEventListener('click', () => {
+            switchToRegister();
+        });
+
+        function switchToLogin() {
+            loginTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all';
+            registerTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all';
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            subtitle.textContent = '欢迎回来！请登录您的账户';
+            hideMessage();
+        }
+
+        function switchToRegister() {
+            registerTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all';
+            loginTab.className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all';
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            subtitle.textContent = '创建您的AI小子账户';
+            hideMessage();
+        }
+
+        // 消息显示
+        function showMessage(text, type = 'info') {
+            messageEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            
+            if (type === 'error') {
+                messageEl.classList.add('bg-red-100', 'text-red-800');
+                messageIcon.className = 'ri-error-warning-fill mr-2';
+            } else if (type === 'success') {
+                messageEl.classList.add('bg-green-100', 'text-green-800');
+                messageIcon.className = 'ri-check-circle-fill mr-2';
+            } else {
+                messageEl.classList.add('bg-blue-100', 'text-blue-800');
+                messageIcon.className = 'ri-information-fill mr-2';
+            }
+            
+            messageText.textContent = text;
+        }
+
+        function hideMessage() {
+            messageEl.classList.add('hidden');
+        }
+
+        // 设置按钮加载状态
+        function setButtonLoading(button, isLoading, originalText) {
+            if (isLoading) {
+                button.disabled = true;
+                button.innerHTML = `<i class="ri-loader-4-line loading-spinner mr-2"></i>处理中...`;
+            } else {
+                button.disabled = false;
+                button.innerHTML = `<span>${originalText}</span>`;
+            }
+        }
+
+        // 倒计时
+        let countdownTimer = null;
+        function startCountdown(seconds) {
+            let remaining = seconds;
+            sendCodeBtn.disabled = true;
+            
+            const updateButton = () => {
+                if (remaining > 0) {
+                    sendCodeBtn.textContent = `${remaining}秒后重发`;
+                    remaining--;
+                    countdownTimer = setTimeout(updateButton, 1000);
+                } else {
+                    sendCodeBtn.disabled = false;
+                    sendCodeBtn.textContent = '发送验证码';
+                    countdownTimer = null;
+                }
+            };
+            
+            updateButton();
+        }
+
+        // 发送验证码
+        sendCodeBtn.addEventListener('click', async () => {
+            const email = document.getElementById('register-email').value;
+            
+            if (!email) {
+                showMessage('请先输入邮箱地址', 'error');
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('请输入有效的邮箱地址', 'error');
+                return;
+            }
+
+            setButtonLoading(sendCodeBtn, true, '发送验证码');
+
+            try {
+                const response = await fetch('/api/auth/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    startCountdown(60);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('发送验证码失败:', error);
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                if (!countdownTimer) {
+                    setButtonLoading(sendCodeBtn, false, '发送验证码');
+                }
+            }
+        });
+
+        // 登录表单提交
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const loginBtn = document.getElementById('login-btn');
+
+            setButtonLoading(loginBtn, true, '登录');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 保存token
+                    localStorage.setItem('ai_token', result.data.token);
+                    localStorage.setItem('ai_user', JSON.stringify(result.data.user));
+                    
+                    showMessage('登录成功，正在跳转...', 'success');
+                    
+                    // 显示成功状态并跳转
+                    setTimeout(() => {
+                        loggedInStatus.classList.remove('hidden');
+                        loginForm.style.display = 'none';
+                        
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    }, 1000);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('登录失败:', error);
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                setButtonLoading(loginBtn, false, '登录');
+            }
+        });
+
+        // 注册表单提交
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const verificationCode = document.getElementById('verification-code').value;
+            const registerBtn = document.getElementById('register-btn');
+
+            if (password.length < 6) {
+                showMessage('密码长度至少为6位', 'error');
+                return;
+            }
+
+            if (!/^\d{6}$/.test(verificationCode)) {
+                showMessage('请输入6位数字验证码', 'error');
+                return;
+            }
+
+            setButtonLoading(registerBtn, true, '注册');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, verificationCode })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 保存token
+                    localStorage.setItem('ai_token', result.data.token);
+                    localStorage.setItem('ai_user', JSON.stringify(result.data.user));
+                    
+                    showMessage('注册成功，正在跳转...', 'success');
+                    
+                    // 显示成功状态并跳转
+                    setTimeout(() => {
+                        loggedInStatus.classList.remove('hidden');
+                        registerForm.style.display = 'none';
+                        
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    }, 1000);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('注册失败:', error);
+                showMessage('网络错误，请稍后重试', 'error');
+            } finally {
+                setButtonLoading(registerBtn, false, '注册');
+            }
+        });
+
+        // 页面加载时检查登录状态
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('ai_token');
+            const user = localStorage.getItem('ai_user');
+            
+            if (token && user) {
+                // 已登录，直接跳转
+                loggedInStatus.classList.remove('hidden');
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'none';
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html> 

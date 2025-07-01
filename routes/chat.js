@@ -2,11 +2,13 @@ const express = require('express');
 const router = express.Router();
 const storage = require('../utils/storage');
 const aiService = require('../services/aiService');
+const { authenticateToken, getUserEmail } = require('../middleware/auth');
 
 // 发送消息并获取AI回复
-router.post('/send', async (req, res) => {
+router.post('/send', authenticateToken, async (req, res) => {
   try {
     const { message, chatId, useThinking = false, useSearch = false, attachedFiles = [] } = req.body;
+    const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ 
@@ -15,19 +17,19 @@ router.post('/send', async (req, res) => {
       });
     }
 
-    console.log('📨 收到消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
+    console.log('📨 用户', userEmail, '发送消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
 
     // 获取当前聊天
     let currentChatId = chatId;
     let chat;
 
     if (currentChatId) {
-      chat = await storage.getChat(currentChatId);
+      chat = await storage.getChat(currentChatId, userEmail);
     }
 
     // 如果没有找到聊天或没有提供chatId，创建新聊天
     if (!chat) {
-      chat = await storage.createChat('新对话...');
+      chat = await storage.createChat('新对话...', userEmail);
       currentChatId = chat.id;
     }
 
@@ -47,20 +49,20 @@ router.post('/send', async (req, res) => {
       }));
     }
 
-    await storage.addMessage(currentChatId, userMessage);
+    await storage.addMessage(currentChatId, userMessage, userEmail);
 
     // 获取完整的消息历史
-    const updatedChat = await storage.getChat(currentChatId);
+    const updatedChat = await storage.getChat(currentChatId, userEmail);
     const messages = updatedChat.messages;
 
     // 生成AI回复
     const aiReply = await aiService.generateReply(messages, { useThinking, useSearch, files: attachedFiles });
 
     // 保存AI回复
-    await storage.addMessage(currentChatId, aiReply);
+    await storage.addMessage(currentChatId, aiReply, userEmail);
 
     // 智能生成标题
-    const finalChat = await storage.getChat(currentChatId);
+    const finalChat = await storage.getChat(currentChatId, userEmail);
     const shouldGenerateTitle = (
       // 新对话，有足够消息数量
       (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
@@ -73,8 +75,8 @@ router.post('/send', async (req, res) => {
     if (shouldGenerateTitle) {
       try {
         const aiTitle = await aiService.generateChatTitle(finalChat.messages);
-        await storage.updateChatTitle(currentChatId, aiTitle);
-        console.log('🏷️ 已为对话生成AI标题:', aiTitle);
+        await storage.updateChatTitle(currentChatId, aiTitle, userEmail);
+        console.log('🏷️ 已为用户', userEmail, '的对话生成AI标题:', aiTitle);
       } catch (error) {
         console.error('生成AI标题失败:', error);
       }
@@ -103,9 +105,16 @@ router.post('/send', async (req, res) => {
 });
 
 // 获取聊天历史列表
-router.get('/history', async (req, res) => {
+router.get('/history', authenticateToken, async (req, res) => {
   try {
-    const history = await storage.getChatHistory();
+    const userEmail = getUserEmail(req);
+    const history = await storage.getChatHistory(userEmail);
+    
+    console.log('📜 用户', userEmail, '获取聊天历史，共', 
+      Object.values(history).reduce((sum, group) => {
+        if (Array.isArray(group)) return sum + group.length;
+        return sum + Object.values(group).reduce((s, arr) => s + arr.length, 0);
+      }, 0), '个对话');
     
     res.json({
       success: true,
@@ -122,15 +131,16 @@ router.get('/history', async (req, res) => {
 });
 
 // 获取特定聊天的完整内容
-router.get('/:chatId', async (req, res) => {
+router.get('/:chatId', authenticateToken, async (req, res) => {
   try {
     const { chatId } = req.params;
-    const chat = await storage.getChat(chatId);
+    const userEmail = getUserEmail(req);
+    const chat = await storage.getChat(chatId, userEmail);
 
     if (!chat) {
       return res.status(404).json({
         success: false,
-        error: '聊天不存在'
+        error: '聊天不存在或无权访问'
       });
     }
 
@@ -149,10 +159,11 @@ router.get('/:chatId', async (req, res) => {
 });
 
 // 创建新聊天
-router.post('/new', async (req, res) => {
+router.post('/new', authenticateToken, async (req, res) => {
   try {
     const { title } = req.body;
-    const newChat = await storage.createChat(title);
+    const userEmail = getUserEmail(req);
+    const newChat = await storage.createChat(title, userEmail);
 
     res.json({
       success: true,
@@ -169,11 +180,12 @@ router.post('/new', async (req, res) => {
 });
 
 // 删除聊天
-router.delete('/:chatId', async (req, res) => {
+router.delete('/:chatId', authenticateToken, async (req, res) => {
   try {
     const { chatId } = req.params;
+    const userEmail = getUserEmail(req);
     
-    const result = await storage.deleteChat(chatId);
+    const result = await storage.deleteChat(chatId, userEmail);
     
     res.json({
       success: true,
@@ -186,7 +198,7 @@ router.delete('/:chatId', async (req, res) => {
     if (error.message === '聊天不存在') {
       res.status(404).json({
         success: false,
-        error: '聊天不存在'
+        error: '聊天不存在或无权访问'
       });
     } else {
       res.status(500).json({
@@ -198,23 +210,24 @@ router.delete('/:chatId', async (req, res) => {
 });
 
 // 批量删除聊天
-router.delete('/batch/delete', async (req, res) => {
+router.post('/batch-delete', authenticateToken, async (req, res) => {
   try {
     const { chatIds } = req.body;
+    const userEmail = getUserEmail(req);
     
-    if (!chatIds || !Array.isArray(chatIds) || chatIds.length === 0) {
+    if (!Array.isArray(chatIds) || chatIds.length === 0) {
       return res.status(400).json({
         success: false,
         error: '请提供要删除的聊天ID列表'
       });
     }
 
-    const deletedCount = await storage.deleteMultipleChats(chatIds);
+    const result = await storage.deleteMultipleChats(chatIds, userEmail);
     
     res.json({
       success: true,
-      message: `成功删除 ${deletedCount} 个聊天`,
-      deletedCount
+      message: `批量删除完成，已删除 ${result.deletedCount} 个聊天`,
+      data: result
     });
 
   } catch (error) {
@@ -226,10 +239,71 @@ router.delete('/batch/delete', async (req, res) => {
   }
 });
 
-// 流式聊天接口（可选）
-router.post('/stream', async (req, res) => {
+// 搜索用户聊天记录
+router.get('/search/:query', authenticateToken, async (req, res) => {
   try {
-    const { message, chatId, useThinking = false, useSearch = false, attachedFiles = [] } = req.body;
+    const { query } = req.params;
+    const { limit = 10 } = req.query;
+    const userEmail = getUserEmail(req);
+
+    if (!query || query.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: '搜索关键词不能为空'
+      });
+    }
+
+    const results = await storage.searchUserChats(userEmail, query, parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: {
+        query: query,
+        results: results,
+        total: results.length
+      }
+    });
+
+  } catch (error) {
+    console.error('搜索聊天失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '搜索失败，请重试'
+    });
+  }
+});
+
+// 获取用户聊天统计信息
+router.get('/stats/user', authenticateToken, async (req, res) => {
+  try {
+    const userEmail = getUserEmail(req);
+    const stats = await storage.getUserChatStats(userEmail);
+    
+    res.json({
+      success: true,
+      data: {
+        user: {
+          email: userEmail,
+          ...req.user
+        },
+        chatStats: stats
+      }
+    });
+
+  } catch (error) {
+    console.error('获取用户统计失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '获取统计信息失败'
+    });
+  }
+});
+
+// 流式发送消息接口
+router.post('/stream', authenticateToken, async (req, res) => {
+  try {
+    const { message, chatId, useThinking = false, useSearch = false, files = [] } = req.body;
+    const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
       return res.status(400).json({ 
@@ -238,26 +312,41 @@ router.post('/stream', async (req, res) => {
       });
     }
 
-    console.log('📨 收到流式消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
+    console.log('🔄 用户', userEmail, '开始流式对话:', { message, chatId, useThinking, useSearch, files: files?.length });
 
-    // 设置流式响应头
+    // 设置SSE响应头
     res.writeHead(200, {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     });
 
+    const sendChunk = async (data) => {
+      try {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch (error) {
+        console.error('发送数据块失败:', error);
+      }
+    };
+
+    // 获取当前聊天
     let currentChatId = chatId;
     let chat;
 
     if (currentChatId) {
-      chat = await storage.getChat(currentChatId);
+      chat = await storage.getChat(currentChatId, userEmail);
     }
 
+    // 如果没有找到聊天或没有提供chatId，创建新聊天
     if (!chat) {
-      chat = await storage.createChat('新对话...');
+      chat = await storage.createChat('新对话...', userEmail);
       currentChatId = chat.id;
+      
+      // 发送新的chatId
+      await sendChunk({ type: 'chatId', chatId: currentChatId });
     }
 
     // 添加用户消息
@@ -266,131 +355,94 @@ router.post('/stream', async (req, res) => {
       content: message.trim()
     };
 
-    // 如果有附件，添加到用户消息中
-    if (attachedFiles && attachedFiles.length > 0) {
-      userMessage.attachments = attachedFiles.map(file => ({
-        filename: file.originalname,
+    // 如果有文件，处理文件信息
+    if (files && files.length > 0) {
+      userMessage.attachments = files.map(file => ({
+        filename: file.originalname || file.filename,
         type: file.mimetype,
         size: file.size,
         url: `/api/upload/file/${file.filename}`
       }));
     }
 
-    await storage.addMessage(currentChatId, userMessage);
+    await storage.addMessage(currentChatId, userMessage, userEmail);
 
-    // 获取消息历史
-    const updatedChat = await storage.getChat(currentChatId);
+    // 获取完整的消息历史
+    const updatedChat = await storage.getChat(currentChatId, userEmail);
     const messages = updatedChat.messages;
 
-    // 发送聊天ID
-    res.write(`data: ${JSON.stringify({ type: 'chatId', chatId: currentChatId })}\n\n`);
-
-    // 首先生成AI回复以检查是否包含天气信息
-    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch, files: attachedFiles });
-    
-    // 如果包含天气信息，先发送天气数据
-    if (aiReply.weather) {
-      res.write(`data: ${JSON.stringify({ type: 'weather', weather: aiReply.weather })}\n\n`);
-    }
-
-    // 流式发送内容
-    let currentPos = 0;
-    const contentToSend = aiReply.content;
-    
-    const sendChunk = async () => {
-      if (currentPos < contentToSend.length) {
-        const chunkSize = Math.min(10, contentToSend.length - currentPos);
-        const chunk = contentToSend.slice(currentPos, currentPos + chunkSize);
-        currentPos += chunkSize;
-        
-        res.write(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`);
-        
-        // 继续发送下一个chunk
-        setTimeout(sendChunk, 30);
-      } else {
-        // 发送完毕
-        // 保存完整回复
-        const savedReply = {
+    // 使用流式生成AI回复
+    let aiContent = '';
+    const aiReply = await aiService.generateStreamReply(messages, async (content, isEnd, fullReply) => {
+      if (!isEnd && content) {
+        // 发送内容块
+        aiContent += content;
+        await sendChunk({ type: 'content', content: content });
+      } else if (isEnd) {
+        // 流式输出结束，准备保存完整回复
+        const completeReply = {
           role: 'assistant',
-          content: aiReply.content,
-          timestamp: new Date().toISOString(),
-          weather: aiReply.weather,
-          searchUsed: aiReply.searchUsed,
-          searchQuery: aiReply.searchQuery,
-          searchResultsCount: aiReply.searchResultsCount,
-          fileAnalysis: aiReply.fileAnalysis
+          content: aiContent,
+          timestamp: new Date().toISOString()
         };
-        await storage.addMessage(currentChatId, savedReply);
+        
+        // 如果有完整回复信息，合并额外数据
+        if (fullReply) {
+          if (fullReply.searchUsed) {
+            completeReply.searchUsed = fullReply.searchUsed;
+            completeReply.searchQuery = fullReply.searchQuery;
+            completeReply.searchResultsCount = fullReply.searchResultsCount;
+          }
+          if (fullReply.weather) {
+            completeReply.weather = fullReply.weather;
+            // 发送天气数据到前端
+            await sendChunk({ type: 'weather', weather: fullReply.weather });
+          }
+          if (fullReply.thinking) {
+            completeReply.thinking = fullReply.thinking;
+          }
+        }
+        
+        // 保存AI回复到存储
+        await storage.addMessage(currentChatId, completeReply, userEmail);
+      }
+    }, { 
+      useThinking, 
+      useSearch, 
+      files: files || []
+    });
         
         // 智能生成标题
-        const finalChat = await storage.getChat(currentChatId);
+    const finalChat = await storage.getChat(currentChatId, userEmail);
         const shouldGenerateTitle = (
-          // 新对话，有足够消息数量
           (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
-          // 或者是以...结尾的截取标题（表示需要智能生成）
           (finalChat.messages.length >= 2 && finalChat.title.endsWith('...') && finalChat.title.length <= 20) ||
-          // 或者标题是"新对话"
           (finalChat.messages.length >= 2 && finalChat.title === '新对话')
         );
         
         if (shouldGenerateTitle) {
           try {
             const aiTitle = await aiService.generateChatTitle(finalChat.messages);
-            await storage.updateChatTitle(currentChatId, aiTitle);
-            console.log('🏷️ 已为流式对话生成AI标题:', aiTitle);
+        await storage.updateChatTitle(currentChatId, aiTitle, userEmail);
+        console.log('🏷️ 已为用户', userEmail, '的对话生成AI标题:', aiTitle);
           } catch (error) {
-            console.error('生成流式AI标题失败:', error);
+        console.error('生成AI标题失败:', error);
           }
         }
         
-        res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
+    // 发送结束信号
+    await sendChunk({ type: 'end' });
         res.end();
-      }
-    };
-    
-    // 开始发送chunks
-    sendChunk();
 
   } catch (error) {
-    console.error('流式聊天错误:', error);
+    console.error('流式发送消息错误:', error);
     
-    // 根据错误类型返回不同的错误信息
-    let errorMessage = '聊天失败，请重试';
-    let errorCode = 'CHAT_ERROR';
-    
-    if (error.code === 'ECONNRESET') {
-      errorMessage = 'AI服务连接中断，请重试';
-      errorCode = 'CONNECTION_RESET';
-    } else if (error.code === 'ENOTFOUND') {
-      errorMessage = '无法连接到AI服务，请检查网络';
-      errorCode = 'SERVICE_UNAVAILABLE';
-    } else if (error.status === 429) {
-      errorMessage = '请求过于频繁，请稍后再试';
-      errorCode = 'RATE_LIMIT_EXCEEDED';
-    } else if (error.status === 401) {
-      errorMessage = 'AI服务认证失败，请联系管理员';
-      errorCode = 'AUTH_FAILED';
-    } else if (error.name === 'AbortError') {
-      errorMessage = '请求被取消';
-      errorCode = 'REQUEST_ABORTED';
-    } else if (error.message.includes('timeout')) {
-      errorMessage = '请求超时，请重试';
-      errorCode = 'TIMEOUT';
-    } else if (error.message.includes('无效的API密钥')) {
-      errorMessage = 'AI服务配置错误，请联系管理员';
-      errorCode = 'CONFIG_ERROR';
+    try {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: '发送消息失败，请稍后重试' })}\n\n`);
+      res.end();
+    } catch (writeError) {
+      console.error('发送错误响应失败:', writeError);
     }
-    
-    const errorResponse = {
-      type: 'error',
-      error: errorMessage,
-      code: errorCode,
-      retryable: ['CONNECTION_RESET', 'SERVICE_UNAVAILABLE', 'TIMEOUT'].includes(errorCode),
-      timestamp: new Date().toISOString()
-    };
-    
-    res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
-    res.end();
   }
 });
 
