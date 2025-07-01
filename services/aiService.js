@@ -346,12 +346,20 @@ ${relevantMessages}
       
       const lastMessage = messages[messages.length - 1];
       let searchResults = null;
+      let weatherData = null;
       let fileAnalysis = null;
 
       // 多模态文件分析
       if (files && files.length > 0) {
         console.log('🎨 流式输出 - 检测到文件附件，开始多模态分析:', files.length, '个文件');
         fileAnalysis = await this.analyzeFiles(files);
+      }
+
+      // 检测是否是天气查询
+      const cityName = this.extractCityFromWeatherQuery(lastMessage.content);
+      if (cityName) {
+        console.log('🌤️ 流式输出 - 检测到天气查询，城市:', cityName);
+        weatherData = await weatherService.getWeatherByCity(cityName);
       }
 
       // 根据前端开关决定是否联网搜索
@@ -442,12 +450,50 @@ ${searchResults.results.map((r, i) =>
         }
       }
 
-      callback('', true); // true表示结束
+      // 构建完整回复对象
+      const completeReply = {
+        role: 'assistant',
+        content: fullReply,
+        timestamp: new Date().toISOString()
+      };
+
+      // 添加搜索信息到回复中
+      if (searchResults && searchResults.success) {
+        completeReply.searchUsed = true;
+        completeReply.searchQuery = searchResults.query;
+        completeReply.searchResultsCount = searchResults.results.length;
+      }
+
+      // 添加天气信息到回复中
+      if (weatherData) {
+        completeReply.weather = weatherData;
+        console.log('🌤️ 流式输出 - 已添加天气信息到回复中');
+      }
+
+      // 添加文件分析信息到回复中
+      if (fileAnalysis && fileAnalysis.length > 0) {
+        completeReply.fileAnalysis = fileAnalysis;
+        console.log('🎨 流式输出 - 已添加文件分析信息到回复中');
+      }
+
+      // 如果启用思考过程，生成思考内容
+      if (useThinking) {
+        completeReply.thinking = await this.generateThinkingProcess(messages, searchResults);
+      }
+
+      // 发送结束信号，并传递完整回复对象
+      callback('', true, completeReply); // true表示结束，第三个参数是完整回复对象
       return fullReply;
 
     } catch (error) {
       console.error('流式回复错误:', error);
-      callback('哎呀，我刚才开小差了！😅 能再说一遍吗？', true);
+      const fallbackReply = {
+        role: 'assistant',
+        content: '哎呀，我刚才开小差了！😅 能再说一遍吗？',
+        timestamp: new Date().toISOString(),
+        error: true
+      };
+      callback('哎呀，我刚才开小差了！😅 能再说一遍吗？', true, fallbackReply);
       return '';
     }
   }
