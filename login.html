@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,39 +11,57 @@
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+
         .glass-effect {
             backdrop-filter: blur(10px);
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         .input-focus:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
+
         .loading-spinner {
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
     <div class="glass-effect rounded-2xl p-8 w-full max-w-md shadow-2xl">
         <!-- 头部 -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">🤖 AI小子</h1>
+            <div class="mb-4 flex justify-center">
+                <div
+                    class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-200/30 overflow-hidden">
+                    <img src="image/AI 小子.png" alt="AI小子Logo" class="w-14 h-14 object-contain">
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">AI小子</h1>
             <p class="text-blue-100" id="subtitle">欢迎回来！请登录您的账户</p>
         </div>
 
         <!-- 切换按钮 -->
         <div class="flex bg-white bg-opacity-10 rounded-lg p-1 mb-6">
-            <button id="login-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all">
+            <button id="login-tab"
+                class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-white bg-opacity-20 transition-all">
                 登录
             </button>
-            <button id="register-tab" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all">
+            <button id="register-tab"
+                class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-blue-100 transition-all">
                 注册
             </button>
         </div>
@@ -51,13 +70,18 @@
         <form id="login-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
-                <input type="email" id="login-email" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的邮箱" required>
+                <input type="email" id="login-email"
+                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
+                    placeholder="请输入您的邮箱" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
-                <input type="password" id="login-password" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的密码" required>
+                <input type="password" id="login-password"
+                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
+                    placeholder="请输入您的密码" required>
             </div>
-            <button type="submit" id="login-btn" class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
+            <button type="submit" id="login-btn"
+                class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
                 <span>登录</span>
             </button>
         </form>
@@ -66,22 +90,30 @@
         <form id="register-form" class="space-y-4 hidden">
             <div>
                 <label class="block text-sm font-medium text-blue-100 mb-2">邮箱地址</label>
-                <input type="email" id="register-email" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入您的邮箱" required>
+                <input type="email" id="register-email"
+                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
+                    placeholder="请输入您的邮箱" required>
             </div>
             <div>
                 <label class="block text-sm font-medium text-blue-100 mb-2">密码</label>
-                <input type="password" id="register-password" class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="密码至少6位" required minlength="6">
+                <input type="password" id="register-password"
+                    class="w-full px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
+                    placeholder="密码至少6位" required minlength="6">
             </div>
             <div>
                 <label class="block text-sm font-medium text-blue-100 mb-2">验证码</label>
                 <div class="flex gap-2">
-                    <input type="text" id="verification-code" class="flex-1 px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus" placeholder="请输入验证码" required maxlength="6">
-                    <button type="button" id="send-code-btn" class="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                    <input type="text" id="verification-code"
+                        class="flex-1 px-4 py-3 bg-white bg-opacity-10 text-white placeholder-blue-200 rounded-lg border border-white border-opacity-20 input-focus"
+                        placeholder="请输入验证码" required maxlength="6">
+                    <button type="button" id="send-code-btn"
+                        class="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
                         发送验证码
                     </button>
                 </div>
             </div>
-            <button type="submit" id="register-btn" class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
+            <button type="submit" id="register-btn"
+                class="w-full bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center">
                 <span>注册</span>
             </button>
         </form>
@@ -146,7 +178,7 @@
         // 消息显示
         function showMessage(text, type = 'info') {
             messageEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
-            
+
             if (type === 'error') {
                 messageEl.classList.add('bg-red-100', 'text-red-800');
                 messageIcon.className = 'ri-error-warning-fill mr-2';
@@ -157,7 +189,7 @@
                 messageEl.classList.add('bg-blue-100', 'text-blue-800');
                 messageIcon.className = 'ri-information-fill mr-2';
             }
-            
+
             messageText.textContent = text;
         }
 
@@ -181,7 +213,7 @@
         function startCountdown(seconds) {
             let remaining = seconds;
             sendCodeBtn.disabled = true;
-            
+
             const updateButton = () => {
                 if (remaining > 0) {
                     sendCodeBtn.textContent = `${remaining}秒后重发`;
@@ -193,14 +225,14 @@
                     countdownTimer = null;
                 }
             };
-            
+
             updateButton();
         }
 
         // 发送验证码
         sendCodeBtn.addEventListener('click', async () => {
             const email = document.getElementById('register-email').value;
-            
+
             if (!email) {
                 showMessage('请先输入邮箱地址', 'error');
                 return;
@@ -243,7 +275,7 @@
         // 登录表单提交
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const loginBtn = document.getElementById('login-btn');
@@ -265,14 +297,14 @@
                     // 保存token
                     localStorage.setItem('ai_token', result.data.token);
                     localStorage.setItem('ai_user', JSON.stringify(result.data.user));
-                    
+
                     showMessage('登录成功，正在跳转...', 'success');
-                    
+
                     // 显示成功状态并跳转
                     setTimeout(() => {
                         loggedInStatus.classList.remove('hidden');
                         loginForm.style.display = 'none';
-                        
+
                         setTimeout(() => {
                             window.location.href = '/';
                         }, 1500);
@@ -291,7 +323,7 @@
         // 注册表单提交
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             const verificationCode = document.getElementById('verification-code').value;
@@ -324,14 +356,14 @@
                     // 保存token
                     localStorage.setItem('ai_token', result.data.token);
                     localStorage.setItem('ai_user', JSON.stringify(result.data.user));
-                    
+
                     showMessage('注册成功，正在跳转...', 'success');
-                    
+
                     // 显示成功状态并跳转
                     setTimeout(() => {
                         loggedInStatus.classList.remove('hidden');
                         registerForm.style.display = 'none';
-                        
+
                         setTimeout(() => {
                             window.location.href = '/';
                         }, 1500);
@@ -351,13 +383,13 @@
         window.addEventListener('load', () => {
             const token = localStorage.getItem('ai_token');
             const user = localStorage.getItem('ai_user');
-            
+
             if (token && user) {
                 // 已登录，直接跳转
                 loggedInStatus.classList.remove('hidden');
                 loginForm.style.display = 'none';
                 registerForm.style.display = 'none';
-                
+
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 2000);
@@ -365,4 +397,5 @@
         });
     </script>
 </body>
-</html> 
+
+</html>

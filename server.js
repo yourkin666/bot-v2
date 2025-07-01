@@ -56,17 +56,17 @@ app.get('/webpage', (req, res) => {
 });
 
 // 启动服务器
-app.listen(PORT, async () => {
+app.listen(PORT, config.server.host, async () => {
   console.log(`🚀 AI小子后端服务启动成功！`);
   console.log(`🌐 展示页面: http://localhost:${PORT}/webpage`);
   console.log(`🌐 主页面: http://localhost:${PORT}/`);
   console.log(`📧 认证API: http://localhost:${PORT}/api/auth`);
   console.log(`💬 聊天API: http://localhost:${PORT}/api/chat`);
-  
+
   // 显示邮件服务状态
   const emailService = require('./services/emailService');
   const emailStatus = emailService.getServiceStatus();
-  
+
   if (emailStatus.configured && emailStatus.initialized) {
     console.log(`✅ 邮件服务已配置: ${emailStatus.host}`);
   } else if (emailStatus.configured) {
@@ -75,15 +75,15 @@ app.listen(PORT, async () => {
     console.log(`❌ 邮件服务未配置，请在配置文件中设置SMTP信息`);
     console.log(`   需要设置: SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM`);
   }
-  
+
   // 显示认证配置状态
   if (config.auth.jwtSecret.includes('change-in-production')) {
     console.log(`⚠️  JWT密钥使用默认值，生产环境请修改`);
   }
-  
+
   // 启动定时清理任务
   const userService = require('./services/userService');
-  
+
   // 每小时清理一次过期验证码
   setInterval(async () => {
     try {
@@ -92,7 +92,7 @@ app.listen(PORT, async () => {
       console.error('定时清理过期验证码失败:', error);
     }
   }, 60 * 60 * 1000); // 1小时
-  
+
   // 立即执行一次清理
   setTimeout(async () => {
     try {
@@ -101,7 +101,7 @@ app.listen(PORT, async () => {
       console.error('初始清理过期验证码失败:', error);
     }
   }, 5000); // 5秒后执行
-  
+
   console.log(`⏰ 定时清理任务已启动（每小时清理过期验证码）`);
   console.log(`🎉 所有服务已就绪！`);
 }); 

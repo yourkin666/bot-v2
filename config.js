@@ -16,7 +16,7 @@ module.exports = {
   // 服务器配置
   server: {
     port: process.env.PORT || 3002,
-    host: 'localhost'
+    host: '0.0.0.0' // 监听所有网络接口，允许外部访问
   },
   
   // AI 小子配置
