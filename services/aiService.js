@@ -15,6 +15,10 @@ class AIService {
     this.maxTokens = config.ai.maxTokens;
     this.temperature = config.ai.temperature;
     
+    // 天气查询防抖机制
+    this.weatherQueryCache = new Map();
+    this.weatherQueryCooldown = 2 * 60 * 1000; // 2分钟冷却时间
+    
     // AI小子的人设
     this.systemPrompt = `你是AI小子，一个专门陪伴儿童成长的AI助手。你的特点：
 
@@ -68,11 +72,27 @@ class AIService {
         fileAnalysis = await this.analyzeFiles(files);
       }
 
-      // 检测是否是天气查询
+      // 检测是否是天气查询（加入防抖机制）
       const cityName = this.extractCityFromWeatherQuery(lastMessage.content);
       if (cityName) {
-        console.log('🌤️ 检测到天气查询，城市:', cityName);
-        weatherData = await weatherService.getWeatherByCity(cityName);
+        // 检查是否在冷却期内
+        const cacheKey = `weather_${cityName}_${lastMessage.content.slice(0, 20)}`;
+        const lastQuery = this.weatherQueryCache.get(cacheKey);
+        const now = Date.now();
+        
+        if (lastQuery && (now - lastQuery < this.weatherQueryCooldown)) {
+          console.log('🌤️ 天气查询冷却中，跳过天气获取:', cityName);
+          weatherData = null;
+        } else {
+          console.log('🌤️ 检测到天气查询，城市:', cityName);
+          weatherData = await weatherService.getWeatherByCity(cityName);
+          
+          // 更新缓存时间
+          this.weatherQueryCache.set(cacheKey, now);
+          
+          // 清理过期缓存
+          this.cleanWeatherQueryCache();
+        }
       }
 
       // 根据前端开关决定是否联网搜索
@@ -355,11 +375,27 @@ ${relevantMessages}
         fileAnalysis = await this.analyzeFiles(files);
       }
 
-      // 检测是否是天气查询
+      // 检测是否是天气查询（加入防抖机制）
       const cityName = this.extractCityFromWeatherQuery(lastMessage.content);
       if (cityName) {
-        console.log('🌤️ 流式输出 - 检测到天气查询，城市:', cityName);
-        weatherData = await weatherService.getWeatherByCity(cityName);
+        // 检查是否在冷却期内
+        const cacheKey = `weather_${cityName}_${lastMessage.content.slice(0, 20)}`;
+        const lastQuery = this.weatherQueryCache.get(cacheKey);
+        const now = Date.now();
+        
+        if (lastQuery && (now - lastQuery < this.weatherQueryCooldown)) {
+          console.log('🌤️ 天气查询冷却中，跳过天气获取:', cityName);
+          weatherData = null;
+        } else {
+          console.log('🌤️ 流式输出 - 检测到天气查询，城市:', cityName);
+          weatherData = await weatherService.getWeatherByCity(cityName);
+          
+          // 更新缓存时间
+          this.weatherQueryCache.set(cacheKey, now);
+          
+          // 清理过期缓存
+          this.cleanWeatherQueryCache();
+        }
       }
 
       // 根据前端开关决定是否联网搜索
@@ -498,20 +534,49 @@ ${searchResults.results.map((r, i) =>
     }
   }
 
-  // 从用户消息中提取城市名称（优化版）
+  // 从用户消息中提取城市名称（严格模式）
   extractCityFromWeatherQuery(message) {
-    // 天气查询关键词（扩展版）
-    const weatherKeywords = [
-      '天气', '气温', '温度', '下雨', '晴天', '阴天', '多云', '雪', '风', '湿度',
-      '今天', '明天', '气候', '雷雨', '暴雨', '小雨', '中雨', '大雨', '阵雨',
-      '晴', '阴', '雾', '霾', '沙尘', '台风', '冰雹', '霜', '露水'
+    // 严格的天气查询关键词（避免误触发）
+    const strictWeatherKeywords = [
+      '天气', '气温', '温度', '下雨', '晴天', '阴天', '多云', '雪天', '风速',
+      '湿度', '气候', '雷雨', '暴雨', '小雨', '中雨', '大雨', '阵雨',
+      '雾霾', '沙尘', '台风', '冰雹', '霜冻', '露水'
     ];
     
-    // 快速检查是否包含天气相关关键词
-    const hasWeatherKeyword = weatherKeywords.some(keyword => message.includes(keyword));
-    if (!hasWeatherKeyword) {
+    // 时间+天气的组合（更精确）
+    const timeWeatherPatterns = [
+      /今天.*?天气/, /明天.*?天气/, /后天.*?天气/,
+      /今天.*?气温/, /明天.*?气温/, /后天.*?气温/,
+      /今天.*?温度/, /明天.*?温度/, /后天.*?温度/,
+      /今天.*?下雨/, /明天.*?下雨/, /后天.*?下雨/,
+      /天气.*?今天/, /天气.*?明天/, /天气.*?后天/,
+      /气温.*?今天/, /气温.*?明天/, /气温.*?后天/
+    ];
+    
+    // 单独的"今天"、"明天"、"晴"、"阴"等词汇排除，避免误触发
+    const excludeOnlyKeywords = ['今天', '明天', '后天', '晴', '阴'];
+    
+    // 检查是否有严格的天气关键词
+    const hasStrictWeatherKeyword = strictWeatherKeywords.some(keyword => message.includes(keyword));
+    
+    // 检查是否有时间+天气的组合模式
+    const hasTimeWeatherPattern = timeWeatherPatterns.some(pattern => pattern.test(message));
+    
+    // 如果只包含容易误触发的单词，且消息较长，则不识别为天气查询
+    if (!hasStrictWeatherKeyword && !hasTimeWeatherPattern) {
+      const onlyHasExcludeKeywords = excludeOnlyKeywords.some(keyword => message.includes(keyword));
+      if (onlyHasExcludeKeywords && message.length > 15) {
+        console.log('🌤️ 排除疑似非天气查询:', message.slice(0, 30));
+        return null;
+      }
+    }
+    
+    // 必须至少满足一个条件才进行天气查询
+    if (!hasStrictWeatherKeyword && !hasTimeWeatherPattern) {
       return null;
     }
+    
+    console.log('🌤️ 检测到可能的天气查询:', message);
 
     // 扩展的城市列表（按热度排序）
     const cities = [
@@ -557,12 +622,13 @@ ${searchResults.results.map((r, i) =>
       }
     }
 
-    // 智能推断：如果消息很简单，可能是直接问天气
-    if (message.length <= 10 && weatherKeywords.some(k => message.includes(k))) {
+    // 智能推断：如果消息很简单且明确包含天气关键词，可能是直接问天气
+    if (message.length <= 10 && strictWeatherKeywords.some(k => message.includes(k))) {
       console.log('🌤️ 简单天气查询，使用默认城市: 北京');
       return '北京';
     }
 
+    console.log('🌤️ 未检测到明确的城市信息');
     return null; // 没有检测到明确的城市信息
   }
 
@@ -868,6 +934,16 @@ ${searchResults.results.map((r, i) =>
     if (mimetype === 'image/tiff') return 'TIFF';
     if (mimetype === 'image/svg+xml') return 'SVG矢量图';
     return '图片';
+  }
+
+  // 清理过期的天气查询缓存
+  cleanWeatherQueryCache() {
+    const now = Date.now();
+    for (const [key, timestamp] of this.weatherQueryCache.entries()) {
+      if (now - timestamp > this.weatherQueryCooldown) {
+        this.weatherQueryCache.delete(key);
+      }
+    }
   }
 }
 
