@@ -722,12 +722,46 @@
         });
 
         // OAuth 登录处理
-        document.getElementById('google-login').addEventListener('click', () => {
-            window.location.href = '/api/auth/google';
+        document.getElementById('google-login').addEventListener('click', async () => {
+            try {
+                showMessage('正在跳转到Google登录页面...', 'info');
+                // 检查Google OAuth是否可用
+                const response = await fetch('/api/auth/google', {
+                    method: 'HEAD'
+                });
+
+                if (response.status === 503) {
+                    showMessage('小朋友，Google登录暂时不可用哦，请使用邮箱密码登录~', 'error');
+                    return;
+                }
+
+                // 跳转到Google OAuth
+                window.location.href = '/api/auth/google';
+            } catch (error) {
+                console.error('Google login error:', error);
+                showMessage('小朋友，Google登录遇到了小问题，试试其他登录方式吧~', 'error');
+            }
         });
 
-        document.getElementById('github-login').addEventListener('click', () => {
-            window.location.href = '/api/auth/github';
+        document.getElementById('github-login').addEventListener('click', async () => {
+            try {
+                showMessage('正在跳转到GitHub登录页面...', 'info');
+                // 检查GitHub OAuth是否可用
+                const response = await fetch('/api/auth/github', {
+                    method: 'HEAD'
+                });
+
+                if (response.status === 503) {
+                    showMessage('小朋友，GitHub登录暂时不可用哦，请使用邮箱密码登录~', 'error');
+                    return;
+                }
+
+                // 跳转到GitHub OAuth
+                window.location.href = '/api/auth/github';
+            } catch (error) {
+                console.error('GitHub login error:', error);
+                showMessage('小朋友，GitHub登录遇到了小问题，试试其他登录方式吧~', 'error');
+            }
         });
 
         // 处理OAuth回调中的token参数

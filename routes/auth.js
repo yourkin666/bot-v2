@@ -97,10 +97,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         const token = userService.generateToken(req.user);
 
         // 重定向到前端，携带token
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+        res.redirect(`/login.html?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
       } catch (error) {
         console.error('Google OAuth callback error:', error);
-        res.redirect('/login?error=oauth_failed');
+        res.redirect('/login.html?error=oauth_failed');
       }
     }
   );
@@ -128,10 +128,10 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         const token = userService.generateToken(req.user);
 
         // 重定向到前端，携带token
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+        res.redirect(`/login.html?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
       } catch (error) {
         console.error('GitHub OAuth callback error:', error);
-        res.redirect('/login?error=oauth_failed');
+        res.redirect('/login.html?error=oauth_failed');
       }
     }
   );

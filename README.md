@@ -44,6 +44,8 @@ npm install
 
 ### 3. 配置环境
 
+#### 3.1 基本配置
+
 复制并编辑配置文件：
 
 ```bash
@@ -69,6 +71,59 @@ module.exports = {
 };
 ```
 
+#### 3.2 环境变量配置（可选）
+
+创建 `.env` 文件来配置环境变量：
+
+```bash
+# 服务器配置
+PORT=3002
+
+# JWT 配置
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+SESSION_SECRET=your-super-secret-session-key-change-in-production
+
+# 邮件服务配置
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=587
+SMTP_USER=your-email@qq.com
+SMTP_PASS=your-qq-email-auth-code
+EMAIL_FROM=your-email@qq.com
+
+# Google OAuth 配置（可选）
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# GitHub OAuth 配置（可选）
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
+
+#### 3.3 配置 Google OAuth（可选）
+
+如果要启用 Google 登录功能，需要：
+
+1. **创建 Google Cloud 项目**：
+   - 访问 [Google Cloud Console](https://console.cloud.google.com/)
+   - 创建新项目或选择现有项目
+
+2. **启用 Google+ API**：
+   - 在 API 库中搜索并启用 "Google+ API"
+
+3. **创建 OAuth 2.0 凭据**：
+   - 转到 "凭据" 页面
+   - 创建 "OAuth 2.0 客户端 ID"
+   - 应用类型选择 "Web 应用"
+   - 添加授权重定向 URI：`http://localhost:3002/api/auth/google/callback`
+
+4. **配置环境变量**：
+   - 将获得的客户端ID和密钥添加到 `.env` 文件中
+
+5. **配置GitHub OAuth（可选）**：
+   - 访问 [GitHub Developer Settings](https://github.com/settings/applications/new)
+   - 创建新的 OAuth 应用
+   - 设置 Authorization callback URL：`http://localhost:3002/api/auth/github/callback`
+
 ### 4. 启动服务
 
 ```bash
@@ -82,7 +137,32 @@ npm start
 ### 5. 访问应用
 
 - **主界面**: http://localhost:3002
+- **登录页面**: http://localhost:3002/login.html
 - **展示页面**: http://localhost:3002/webpage
+
+## 🔐 用户认证和OAuth配置
+
+### 快速配置Google OAuth
+
+```bash
+# 方法1：自动配置（推荐）
+./setup-oauth.sh
+
+# 方法2：测试当前配置
+node test-oauth.js
+```
+
+### 详细配置指南
+
+- **快速开始**: [QUICK_START.md](./QUICK_START.md) - 5分钟快速配置
+- **详细配置**: [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - 完整的OAuth配置步骤
+
+### 支持的登录方式
+
+- ✅ **邮箱密码登录** - 基本认证方式
+- ✅ **Google OAuth登录** - 一键快速登录
+- ✅ **GitHub OAuth登录** - 开发者友好
+- ✅ **邮箱验证码注册** - 安全的用户注册
 
 ## 📁 项目结构
 

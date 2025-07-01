@@ -10,15 +10,15 @@ class AIService {
       apiKey: config.openai.apiKey,
       baseURL: config.openai.baseURL
     });
-    
+
     this.model = config.openai.model;
     this.maxTokens = config.ai.maxTokens;
     this.temperature = config.ai.temperature;
-    
+
     // 天气查询防抖机制
     this.weatherQueryCache = new Map();
     this.weatherQueryCooldown = 2 * 60 * 1000; // 2分钟冷却时间
-    
+
     // AI小子的人设
     this.systemPrompt = `你是AI小子，一个专门陪伴儿童成长的AI助手。你的特点：
 
@@ -79,17 +79,17 @@ class AIService {
         const cacheKey = `weather_${cityName}_${lastMessage.content.slice(0, 20)}`;
         const lastQuery = this.weatherQueryCache.get(cacheKey);
         const now = Date.now();
-        
+
         if (lastQuery && (now - lastQuery < this.weatherQueryCooldown)) {
           console.log('🌤️ 天气查询冷却中，跳过天气获取:', cityName);
           weatherData = null;
         } else {
           console.log('🌤️ 检测到天气查询，城市:', cityName);
           weatherData = await weatherService.getWeatherByCity(cityName);
-          
+
           // 更新缓存时间
           this.weatherQueryCache.set(cacheKey, now);
-          
+
           // 清理过期缓存
           this.cleanWeatherQueryCache();
         }
@@ -116,12 +116,12 @@ class AIService {
         const analysisContent = `[文件分析结果]
 用户上传了 ${fileAnalysis.length} 个文件，以下是分析结果：
 
-${fileAnalysis.map((analysis, i) => 
-  `文件 ${i+1}: ${analysis.filename}
+${fileAnalysis.map((analysis, i) =>
+          `文件 ${i + 1}: ${analysis.filename}
 类型: ${analysis.type}
 分析结果: ${analysis.analysis}
 ${analysis.details ? `详细信息: ${analysis.details}` : ''}`
-).join('\n\n')}
+        ).join('\n\n')}
 
 请基于以上文件分析结果以及用户的消息来回答。记住要：
 1. 结合文件内容和用户问题
@@ -148,9 +148,9 @@ ${analysis.details ? `详细信息: ${analysis.details}` : ''}`
 ${searchResults.summary}
 
 详细结果:
-${searchResults.results.map((r, i) => 
-  `${i+1}. ${r.title}\n   来源: ${r.siteName}\n   摘要: ${r.snippet}\n   链接: ${r.url}`
-).join('\n\n')}
+${searchResults.results.map((r, i) =>
+          `${i + 1}. ${r.title}\n   来源: ${r.siteName}\n   摘要: ${r.snippet}\n   链接: ${r.url}`
+        ).join('\n\n')}
 
 请基于以上搜索到的最新信息来回答用户的问题。记住要：
 1. 引用具体的搜索结果
@@ -215,7 +215,7 @@ ${searchResults.results.map((r, i) =>
 
     } catch (error) {
       console.error('AI服务错误:', error);
-      
+
       // 返回友好的错误回复
       return {
         role: 'assistant',
@@ -230,7 +230,7 @@ ${searchResults.results.map((r, i) =>
   async generateThinkingProcess(messages, searchResults = null) {
     try {
       const lastMessage = messages[messages.length - 1];
-      
+
       let thinkingPrompt = `作为AI小子，请分析这个孩子的消息："${lastMessage.content}"
 
 请从以下角度思考（用简单的语言）：
@@ -267,7 +267,7 @@ ${searchResults.results.map((r, i) =>
 
       const thinkingStartTime = Date.now();
       const thinkingTime = Math.floor(Math.random() * 8) + 3; // 3-10秒随机思考时间
-      
+
       return {
         content: response.choices[0].message.content,
         thinkingTime: thinkingTime,
@@ -289,7 +289,7 @@ ${searchResults.results.map((r, i) =>
   async generateChatTitle(messages) {
     try {
       // 只使用前几轮对话来生成标题，避免过长
-      const relevantMessages = messages.slice(0, 4).map(msg => 
+      const relevantMessages = messages.slice(0, 4).map(msg =>
         `${msg.role === 'user' ? '用户' : 'AI小子'}: ${msg.content.substring(0, 100)}`
       ).join('\n');
 
@@ -307,32 +307,34 @@ ${relevantMessages}
 
 请只回复标题，不要其他内容。`;
 
-      // 使用现有的AI回复逻辑生成标题
-      const titleMessages = [
-        { role: 'user', content: titlePrompt }
-      ];
-
-      const response = await this.generateReply(titleMessages, {
+      // 直接调用OpenAI API生成标题，避免循环调用
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: '你是一个专门为儿童对话生成简洁标题的助手。' },
+          { role: 'user', content: titlePrompt }
+        ],
         temperature: 0.3,
-        maxTokens: 30
+        max_tokens: 30
       });
 
       // 提取标题（去除多余内容）
-      let title = response.content.trim();
-      
+      let title = response.choices[0].message.content.trim();
+
       // 清理可能的引号和多余文字
       title = title.replace(/[""''「」《》]/g, '');
       title = title.replace(/^标题[:：]?/, '');
       title = title.replace(/^题目[:：]?/, '');
       title = title.split('\n')[0]; // 只取第一行
       title = title.substring(0, 8); // 限制长度
-      
+
       console.log('🏷️ AI生成的对话标题:', title);
-      
+
       return title || this.generateFallbackTitle(messages);
 
     } catch (error) {
       console.error('生成对话标题失败:', error);
+      console.error('错误详情:', error.message);
       return this.generateFallbackTitle(messages);
     }
   }
@@ -341,9 +343,9 @@ ${relevantMessages}
   generateFallbackTitle(messages) {
     const firstUserMessage = messages.find(msg => msg.role === 'user');
     if (!firstUserMessage) return '新对话';
-    
+
     const content = firstUserMessage.content;
-    
+
     // 智能提取关键词生成标题
     if (content.includes('画') && content.includes('猫')) return '画猫咪教程';
     if (content.includes('画') && content.includes('花')) return '画花朵教程';
@@ -354,7 +356,7 @@ ${relevantMessages}
     if (content.includes('数学')) return '数学学习';
     if (content.includes('英语')) return '英语学习';
     if (content.includes('你好')) return '初次见面';
-    
+
     // 默认按内容长度截取
     return content.substring(0, 6) + '...';
   }
@@ -363,7 +365,7 @@ ${relevantMessages}
   async generateStreamReply(messages, callback, options = {}) {
     try {
       const { useSearch = false, useThinking = false, files = [] } = options;
-      
+
       const lastMessage = messages[messages.length - 1];
       let searchResults = null;
       let weatherData = null;
@@ -382,17 +384,17 @@ ${relevantMessages}
         const cacheKey = `weather_${cityName}_${lastMessage.content.slice(0, 20)}`;
         const lastQuery = this.weatherQueryCache.get(cacheKey);
         const now = Date.now();
-        
+
         if (lastQuery && (now - lastQuery < this.weatherQueryCooldown)) {
           console.log('🌤️ 天气查询冷却中，跳过天气获取:', cityName);
           weatherData = null;
         } else {
           console.log('🌤️ 流式输出 - 检测到天气查询，城市:', cityName);
           weatherData = await weatherService.getWeatherByCity(cityName);
-          
+
           // 更新缓存时间
           this.weatherQueryCache.set(cacheKey, now);
-          
+
           // 清理过期缓存
           this.cleanWeatherQueryCache();
         }
@@ -419,12 +421,12 @@ ${relevantMessages}
         const analysisContent = `[文件分析结果]
 用户上传了 ${fileAnalysis.length} 个文件，以下是分析结果：
 
-${fileAnalysis.map((analysis, i) => 
-  `文件 ${i+1}: ${analysis.filename}
+${fileAnalysis.map((analysis, i) =>
+          `文件 ${i + 1}: ${analysis.filename}
 类型: ${analysis.type}
 分析结果: ${analysis.analysis}
 ${analysis.details ? `详细信息: ${analysis.details}` : ''}`
-).join('\n\n')}
+        ).join('\n\n')}
 
 请基于以上文件分析结果以及用户的消息来回答。记住要：
 1. 结合文件内容和用户问题
@@ -451,9 +453,9 @@ ${analysis.details ? `详细信息: ${analysis.details}` : ''}`
 ${searchResults.summary}
 
 详细结果:
-${searchResults.results.map((r, i) => 
-  `${i+1}. ${r.title}\n   来源: ${r.siteName}\n   摘要: ${r.snippet}\n   链接: ${r.url}`
-).join('\n\n')}
+${searchResults.results.map((r, i) =>
+          `${i + 1}. ${r.title}\n   来源: ${r.siteName}\n   摘要: ${r.snippet}\n   链接: ${r.url}`
+        ).join('\n\n')}
 
 请基于以上搜索到的最新信息来回答用户的问题。记住要：
 1. 引用具体的搜索结果
@@ -542,7 +544,7 @@ ${searchResults.results.map((r, i) =>
       '湿度', '气候', '雷雨', '暴雨', '小雨', '中雨', '大雨', '阵雨',
       '雾霾', '沙尘', '台风', '冰雹', '霜冻', '露水'
     ];
-    
+
     // 时间+天气的组合（更精确）
     const timeWeatherPatterns = [
       /今天.*?天气/, /明天.*?天气/, /后天.*?天气/,
@@ -552,16 +554,16 @@ ${searchResults.results.map((r, i) =>
       /天气.*?今天/, /天气.*?明天/, /天气.*?后天/,
       /气温.*?今天/, /气温.*?明天/, /气温.*?后天/
     ];
-    
+
     // 单独的"今天"、"明天"、"晴"、"阴"等词汇排除，避免误触发
     const excludeOnlyKeywords = ['今天', '明天', '后天', '晴', '阴'];
-    
+
     // 检查是否有严格的天气关键词
     const hasStrictWeatherKeyword = strictWeatherKeywords.some(keyword => message.includes(keyword));
-    
+
     // 检查是否有时间+天气的组合模式
     const hasTimeWeatherPattern = timeWeatherPatterns.some(pattern => pattern.test(message));
-    
+
     // 如果只包含容易误触发的单词，且消息较长，则不识别为天气查询
     if (!hasStrictWeatherKeyword && !hasTimeWeatherPattern) {
       const onlyHasExcludeKeywords = excludeOnlyKeywords.some(keyword => message.includes(keyword));
@@ -570,12 +572,12 @@ ${searchResults.results.map((r, i) =>
         return null;
       }
     }
-    
+
     // 必须至少满足一个条件才进行天气查询
     if (!hasStrictWeatherKeyword && !hasTimeWeatherPattern) {
       return null;
     }
-    
+
     console.log('🌤️ 检测到可能的天气查询:', message);
 
     // 扩展的城市列表（按热度排序）
@@ -583,7 +585,7 @@ ${searchResults.results.map((r, i) =>
       // 直辖市
       '北京', '上海', '天津', '重庆',
       // 省会城市
-      '广州', '深圳', '杭州', '南京', '武汉', '成都', '西安', '长沙', 
+      '广州', '深圳', '杭州', '南京', '武汉', '成都', '西安', '长沙',
       '郑州', '沈阳', '哈尔滨', '长春', '石家庄', '太原', '呼和浩特',
       '济南', '南昌', '合肥', '福州', '昆明', '贵阳', '海口', '南宁',
       '拉萨', '银川', '西宁', '乌鲁木齐',
@@ -635,7 +637,7 @@ ${searchResults.results.map((r, i) =>
   // 优化的错误重试机制
   async generateReplyWithRetry(messages, options = {}, maxRetries = 3) {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🤖 AI回复生成尝试 ${attempt}/${maxRetries}`);
@@ -645,19 +647,19 @@ ${searchResults.results.map((r, i) =>
       } catch (error) {
         lastError = error;
         console.error(`❌ AI回复生成失败 (尝试 ${attempt}):`, error.message);
-        
+
         // 最后一次尝试失败时，不再重试
         if (attempt === maxRetries) {
           break;
         }
-        
+
         // 根据错误类型决定重试延迟
         const delay = this.getRetryDelay(error, attempt);
         console.log(`⏳ ${delay}ms 后重试...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    
+
     // 所有重试都失败，返回友好的错误回复
     return this.getFallbackReply(lastError);
   }
@@ -668,12 +670,12 @@ ${searchResults.results.map((r, i) =>
     if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
       return 1000 * attempt; // 1s, 2s, 3s
     }
-    
+
     // API限流：较长延迟
     if (error.status === 429) {
       return 5000 * attempt; // 5s, 10s, 15s
     }
-    
+
     // 其他错误：中等延迟
     return 2000 * attempt; // 2s, 4s, 6s
   }
@@ -687,9 +689,9 @@ ${searchResults.results.map((r, i) =>
       '我的思路打结了！🧠 给我一点时间理清思路，然后再问我吧。',
       '系统有点忙碌，让我休息一下再回来！⏰ 请稍后重试。'
     ];
-    
+
     const randomMessage = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
-    
+
     return {
       role: 'assistant',
       content: randomMessage,
@@ -705,7 +707,7 @@ ${searchResults.results.map((r, i) =>
     try {
       // 先快速生成回复
       const aiReply = await this.generateReplyWithRetry(messages, options, 2);
-      
+
       if (aiReply.error) {
         callback(aiReply.content, true);
         return aiReply.content;
@@ -715,14 +717,14 @@ ${searchResults.results.map((r, i) =>
       const content = aiReply.content;
       let currentPos = 0;
       const chunkSize = Math.max(1, Math.floor(content.length / 50)); // 动态调整chunk大小
-      
+
       const sendNextChunk = () => {
         if (currentPos < content.length) {
           const chunk = content.slice(currentPos, currentPos + chunkSize);
           currentPos += chunkSize;
-          
+
           callback(chunk, false);
-          
+
           // 动态调整延迟：内容越长，速度越快
           const delay = Math.max(20, 100 - Math.floor(content.length / 20));
           setTimeout(sendNextChunk, delay);
@@ -731,10 +733,10 @@ ${searchResults.results.map((r, i) =>
           callback('', true, aiReply);
         }
       };
-      
+
       sendNextChunk();
       return content;
-      
+
     } catch (error) {
       console.error('优化流式回复生成失败:', error);
       const fallback = this.getFallbackReply(error);
@@ -794,10 +796,10 @@ ${searchResults.results.map((r, i) =>
   async analyzeImage(file) {
     try {
       console.log('🖼️ 开始分析图片:', file.originalname);
-      
+
       // 检查是否支持视觉模型
       const supportsVision = this.checkVisionSupport();
-      
+
       if (!supportsVision) {
         console.log('🖼️ 当前模型不支持视觉分析，使用基础图片信息');
         return {
@@ -806,10 +808,10 @@ ${searchResults.results.map((r, i) =>
           details: `文件大小: ${this.formatFileSize(file.size)}`
         };
       }
-      
+
       // 构建图片URL
       const imageUrl = `http://localhost:${process.env.PORT || 3002}/api/upload/file/${file.filename}`;
-      
+
       // 使用支持视觉的模型分析图片
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o-mini", // 使用支持视觉的模型
@@ -845,7 +847,7 @@ ${searchResults.results.map((r, i) =>
 
     } catch (error) {
       console.error('图片分析错误:', error);
-      
+
       // 如果API不支持视觉功能，返回基础分析
       return {
         type: '图片',
@@ -859,7 +861,7 @@ ${searchResults.results.map((r, i) =>
   async analyzeAudio(file) {
     try {
       console.log('🎵 开始分析音频:', file.originalname);
-      
+
       // 暂时返回基础信息，后续可以集成语音转文字API
       return {
         type: '音频',
@@ -881,7 +883,7 @@ ${searchResults.results.map((r, i) =>
   async analyzeVideo(file) {
     try {
       console.log('🎬 开始分析视频:', file.originalname);
-      
+
       // 暂时返回基础信息，后续可以集成视频分析API
       return {
         type: '视频',

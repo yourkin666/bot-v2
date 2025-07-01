@@ -315,6 +315,144 @@ class UserService {
       };
     }
   }
+
+  // OAuth相关方法
+  
+  // 根据邮箱查找用户 (OAuth需要的方法)
+  async findUserByEmail(email) {
+    return await this.getUserByEmail(email.toLowerCase());
+  }
+
+  // 创建OAuth用户
+  async createOAuthUser(userData) {
+    try {
+      const { email, name, avatar, googleId, githubId, provider } = userData;
+
+      // 验证邮箱格式
+      if (!this.isValidEmail(email)) {
+        throw new Error('邮箱格式不正确');
+      }
+
+      // 检查用户是否已存在
+      const existingUser = await this.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        // 如果用户已存在，更新OAuth信息
+        if (provider === 'google' && googleId) {
+          return await this.updateGoogleId(existingUser.id, googleId);
+        }
+        if (provider === 'github' && githubId) {
+          return await this.updateGithubId(existingUser.id, githubId);
+        }
+        return existingUser;
+      }
+
+      // 创建新OAuth用户
+      const newUser = {
+        id: uuidv4(),
+        email: email.toLowerCase(),
+        name: name || email.split('@')[0],
+        avatar: avatar || null,
+        password: null, // OAuth用户无密码
+        isVerified: true, // OAuth用户默认已验证
+        provider: provider || 'local',
+        googleId: googleId || null,
+        githubId: githubId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString()
+      };
+
+      // 保存用户
+      const users = await this.getAllUsers();
+      users[email.toLowerCase()] = newUser;
+      await fs.writeJson(this.usersFile, users, { spaces: 2 });
+
+      console.log(`✅ OAuth用户创建成功: ${email} (${provider})`);
+
+      return newUser;
+    } catch (error) {
+      console.error('创建OAuth用户失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新用户的Google ID
+  async updateGoogleId(userId, googleId) {
+    try {
+      const users = await this.getAllUsers();
+      const userEmail = Object.keys(users).find(email => users[email].id === userId);
+      
+      if (!userEmail) {
+        throw new Error('用户不存在');
+      }
+
+      const user = users[userEmail];
+      user.googleId = googleId;
+      user.updatedAt = new Date().toISOString();
+      user.lastLoginAt = new Date().toISOString();
+
+      users[userEmail] = user;
+      await fs.writeJson(this.usersFile, users, { spaces: 2 });
+
+      console.log(`🔗 Google ID已更新: ${userEmail} -> ${googleId}`);
+      return user;
+    } catch (error) {
+      console.error('更新Google ID失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新用户的GitHub ID
+  async updateGithubId(userId, githubId) {
+    try {
+      const users = await this.getAllUsers();
+      const userEmail = Object.keys(users).find(email => users[email].id === userId);
+      
+      if (!userEmail) {
+        throw new Error('用户不存在');
+      }
+
+      const user = users[userEmail];
+      user.githubId = githubId;
+      user.updatedAt = new Date().toISOString();
+      user.lastLoginAt = new Date().toISOString();
+
+      users[userEmail] = user;
+      await fs.writeJson(this.usersFile, users, { spaces: 2 });
+
+      console.log(`🔗 GitHub ID已更新: ${userEmail} -> ${githubId}`);
+      return user;
+    } catch (error) {
+      console.error('更新GitHub ID失败:', error);
+      throw error;
+    }
+  }
+
+  // 生成JWT Token (兼容OAuth)
+  generateToken(user) {
+    return this.generateJWTToken(user);
+  }
+
+  // 根据OAuth ID查找用户
+  async findUserByGoogleId(googleId) {
+    try {
+      const users = await this.getAllUsers();
+      return Object.values(users).find(user => user.googleId === googleId) || null;
+    } catch (error) {
+      console.error('根据Google ID查找用户失败:', error);
+      return null;
+    }
+  }
+
+  async findUserByGithubId(githubId) {
+    try {
+      const users = await this.getAllUsers();
+      return Object.values(users).find(user => user.githubId === githubId) || null;
+    } catch (error) {
+      console.error('根据GitHub ID查找用户失败:', error);
+      return null;
+    }
+  }
 }
 
 module.exports = new UserService(); 
