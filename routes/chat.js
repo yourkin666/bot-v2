@@ -4,6 +4,42 @@ const storage = require('../utils/storage');
 const aiService = require('../services/aiService');
 const { authenticateToken, getUserEmail } = require('../middleware/auth');
 
+// 从用户消息中提取城市名称（天气查询）
+function extractCityFromWeatherQuery(message) {
+  // 严格的天气查询关键词
+  const strictWeatherKeywords = [
+    '天气', '气温', '温度', '下雨', '晴天', '阴天', '多云', '雪天', '风速',
+    '湿度', '气候', '雷雨', '暴雨', '小雨', '中雨', '大雨', '阵雨'
+  ];
+  
+  // 检查是否有严格的天气关键词
+  const hasStrictWeatherKeyword = strictWeatherKeywords.some(keyword => message.includes(keyword));
+  
+  if (!hasStrictWeatherKeyword) {
+    return null;
+  }
+  
+  // 扩展的城市列表
+  const cities = [
+    '北京', '上海', '天津', '重庆', '广州', '深圳', '杭州', '南京', '武汉', '成都', 
+    '西安', '长沙', '郑州', '沈阳', '哈尔滨', '长春', '青岛', '大连', '厦门', '宁波'
+  ];
+
+  // 精确匹配城市名称
+  for (const city of cities) {
+    if (message.includes(city)) {
+      return city;
+    }
+  }
+
+  // 如果消息很简单且明确包含天气关键词，使用默认城市
+  if (message.length <= 10) {
+    return '北京';
+  }
+
+  return null;
+}
+
 // 发送消息并获取AI回复
 router.post('/send', authenticateToken, async (req, res) => {
   try {
@@ -11,9 +47,9 @@ router.post('/send', authenticateToken, async (req, res) => {
     const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
-      return res.status(400).json({ 
-        success: false, 
-        error: '消息不能为空' 
+      return res.status(400).json({
+        success: false,
+        error: '消息不能为空'
       });
     }
 
@@ -71,7 +107,7 @@ router.post('/send', authenticateToken, async (req, res) => {
       // 或者标题是"新对话"
       (finalChat.messages.length >= 2 && finalChat.title === '新对话')
     );
-    
+
     if (shouldGenerateTitle) {
       try {
         const aiTitle = await aiService.generateChatTitle(finalChat.messages);
@@ -109,13 +145,13 @@ router.get('/history', authenticateToken, async (req, res) => {
   try {
     const userEmail = getUserEmail(req);
     const history = await storage.getChatHistory(userEmail);
-    
-    console.log('📜 用户', userEmail, '获取聊天历史，共', 
+
+    console.log('📜 用户', userEmail, '获取聊天历史，共',
       Object.values(history).reduce((sum, group) => {
         if (Array.isArray(group)) return sum + group.length;
         return sum + Object.values(group).reduce((s, arr) => s + arr.length, 0);
       }, 0), '个对话');
-    
+
     res.json({
       success: true,
       data: history
@@ -184,9 +220,9 @@ router.delete('/:chatId', authenticateToken, async (req, res) => {
   try {
     const { chatId } = req.params;
     const userEmail = getUserEmail(req);
-    
+
     const result = await storage.deleteChat(chatId, userEmail);
-    
+
     res.json({
       success: true,
       message: '聊天删除成功'
@@ -194,7 +230,7 @@ router.delete('/:chatId', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('删除聊天失败:', error);
-    
+
     if (error.message === '聊天不存在') {
       res.status(404).json({
         success: false,
@@ -214,7 +250,7 @@ router.post('/batch-delete', authenticateToken, async (req, res) => {
   try {
     const { chatIds } = req.body;
     const userEmail = getUserEmail(req);
-    
+
     if (!Array.isArray(chatIds) || chatIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -223,7 +259,7 @@ router.post('/batch-delete', authenticateToken, async (req, res) => {
     }
 
     const result = await storage.deleteMultipleChats(chatIds, userEmail);
-    
+
     res.json({
       success: true,
       message: `批量删除完成，已删除 ${result.deletedCount} 个聊天`,
@@ -254,7 +290,7 @@ router.get('/search/:query', authenticateToken, async (req, res) => {
     }
 
     const results = await storage.searchUserChats(userEmail, query, parseInt(limit));
-    
+
     res.json({
       success: true,
       data: {
@@ -278,7 +314,7 @@ router.get('/stats/user', authenticateToken, async (req, res) => {
   try {
     const userEmail = getUserEmail(req);
     const stats = await storage.getUserChatStats(userEmail);
-    
+
     res.json({
       success: true,
       data: {
@@ -306,9 +342,9 @@ router.post('/stream', authenticateToken, async (req, res) => {
     const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
-      return res.status(400).json({ 
-        success: false, 
-        error: '消息不能为空' 
+      return res.status(400).json({
+        success: false,
+        error: '消息不能为空'
       });
     }
 
@@ -344,7 +380,7 @@ router.post('/stream', authenticateToken, async (req, res) => {
     if (!chat) {
       chat = await storage.createChat('新对话...', userEmail);
       currentChatId = chat.id;
-      
+
       // 发送新的chatId
       await sendChunk({ type: 'chatId', chatId: currentChatId });
     }
@@ -371,6 +407,23 @@ router.post('/stream', authenticateToken, async (req, res) => {
     const updatedChat = await storage.getChat(currentChatId, userEmail);
     const messages = updatedChat.messages;
 
+    // 在开始AI回复之前，先检查是否有天气查询并立即获取天气数据
+    const lastMessage = messages[messages.length - 1];
+    let weatherData = null;
+
+    // 检测天气查询并立即获取数据
+    const cityName = extractCityFromWeatherQuery(lastMessage.content);
+    if (cityName) {
+      console.log('🌤️ 流式回复 - 检测到天气查询，立即获取天气数据:', cityName);
+      const weatherService = require('../services/weatherService');
+      weatherData = await weatherService.getWeatherByCity(cityName);
+
+      if (weatherData) {
+        console.log('🌤️ 立即发送天气数据到前端');
+        await sendChunk({ type: 'weather', weather: weatherData });
+      }
+    }
+
     // 使用流式生成AI回复
     let aiContent = '';
     const aiReply = await aiService.generateStreamReply(messages, async (content, isEnd, fullReply) => {
@@ -385,7 +438,7 @@ router.post('/stream', authenticateToken, async (req, res) => {
           content: aiContent,
           timestamp: new Date().toISOString()
         };
-        
+
         // 如果有完整回复信息，合并额外数据
         if (fullReply) {
           if (fullReply.searchUsed) {
@@ -395,48 +448,52 @@ router.post('/stream', authenticateToken, async (req, res) => {
           }
           if (fullReply.weather) {
             completeReply.weather = fullReply.weather;
-            // 发送天气数据到前端
-            await sendChunk({ type: 'weather', weather: fullReply.weather });
+            // 天气数据已经在开始时发送过了，这里只保存到数据库
           }
           if (fullReply.thinking) {
             completeReply.thinking = fullReply.thinking;
           }
         }
-        
+
+        // 如果前面获取到了天气数据，也要保存到数据库
+        if (weatherData && !completeReply.weather) {
+          completeReply.weather = weatherData;
+        }
+
         // 保存AI回复到存储
         await storage.addMessage(currentChatId, completeReply, userEmail);
       }
-    }, { 
-      useThinking, 
-      useSearch, 
+    }, {
+      useThinking,
+      useSearch,
       files: files || []
     });
-        
-        // 智能生成标题
+
+    // 智能生成标题
     const finalChat = await storage.getChat(currentChatId, userEmail);
-        const shouldGenerateTitle = (
-          (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
-          (finalChat.messages.length >= 2 && finalChat.title.endsWith('...') && finalChat.title.length <= 20) ||
-          (finalChat.messages.length >= 2 && finalChat.title === '新对话')
-        );
-        
-        if (shouldGenerateTitle) {
-          try {
-            const aiTitle = await aiService.generateChatTitle(finalChat.messages);
+    const shouldGenerateTitle = (
+      (finalChat.messages.length >= 2 && finalChat.title === '新对话...') ||
+      (finalChat.messages.length >= 2 && finalChat.title.endsWith('...') && finalChat.title.length <= 20) ||
+      (finalChat.messages.length >= 2 && finalChat.title === '新对话')
+    );
+
+    if (shouldGenerateTitle) {
+      try {
+        const aiTitle = await aiService.generateChatTitle(finalChat.messages);
         await storage.updateChatTitle(currentChatId, aiTitle, userEmail);
         console.log('🏷️ 已为用户', userEmail, '的对话生成AI标题:', aiTitle);
-          } catch (error) {
+      } catch (error) {
         console.error('生成AI标题失败:', error);
-          }
-        }
-        
+      }
+    }
+
     // 发送结束信号
     await sendChunk({ type: 'end' });
-        res.end();
+    res.end();
 
   } catch (error) {
     console.error('流式发送消息错误:', error);
-    
+
     try {
       res.write(`data: ${JSON.stringify({ type: 'error', error: '发送消息失败，请稍后重试' })}\n\n`);
       res.end();
