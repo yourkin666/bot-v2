@@ -1633,9 +1633,9 @@
         }
       }
 
-      function displayUserMessage(message, files = []) {
+      function displayUserMessage(message, files = [], timestamp = null) {
         const chatContainer = document.getElementById('chat-content');
-        const now = new Date().toLocaleString('zh-CN');
+        const now = timestamp ? new Date(timestamp).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN');
 
         // 渲染Markdown格式的用户消息
         const renderedMessage = renderMarkdown(message);
@@ -2164,9 +2164,9 @@ ${renderedMessage}
 
         messages.forEach(message => {
           if (message.role === 'user') {
-            displayUserMessage(message.content);
+            displayUserMessage(message.content, message.attachments || [], message.timestamp);
           } else if (message.role === 'assistant') {
-            displayAssistantMessage(message.content, message.thinking, message.searchUsed, message.searchResultsCount, message.weather);
+            displayAssistantMessage(message.content, message.thinking, message.searchUsed, message.searchResultsCount, message.weather, message.timestamp);
           }
         });
 
@@ -2202,9 +2202,9 @@ ${renderedMessage}
       }
 
       // 显示助手消息
-      function displayAssistantMessage(content, thinking, searchUsed, searchResultsCount, weather) {
+      function displayAssistantMessage(content, thinking, searchUsed, searchResultsCount, weather, timestamp = null) {
         const chatContainer = document.getElementById('chat-content');
-        const now = new Date().toLocaleString('zh-CN');
+        const now = timestamp ? new Date(timestamp).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN');
 
         // 渲染Markdown格式的助手消息
         const renderedMessage = renderMarkdown(content);
