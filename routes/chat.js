@@ -431,15 +431,21 @@ router.post('/stream', authenticateToken, async (req, res) => {
 
     // 使用流式生成AI回复
     let aiContent = '';
+    let thinkingContent = '';
     const aiReply = await aiService.generateStreamReply(messages, async (content, isEnd, fullReply) => {
       if (!isEnd && content) {
-        // 发送内容块
+        // 发送答案内容块
         aiContent += content;
         await sendChunk({ type: 'content', content: content });
       } else if (!isEnd && !content && fullReply) {
-        // 处理中间发送的特殊数据（如思考过程）
-        if (fullReply.type === 'thinking') {
-          console.log('🧠 收到思考过程，立即发送到前端');
+        // 处理中间发送的特殊数据
+        if (fullReply.type === 'thinking_delta') {
+          // 实时发送思考过程增量内容
+          thinkingContent += fullReply.content;
+          console.log('🧠 实时发送思考过程增量到前端');
+          await sendChunk({ type: 'thinking_delta', content: fullReply.content });
+        } else if (fullReply.type === 'thinking') {
+          console.log('🧠 收到完整思考过程，立即发送到前端');
           await sendChunk({ type: 'thinking', thinking: fullReply.thinking });
         }
       } else if (isEnd) {
@@ -463,10 +469,21 @@ router.post('/stream', authenticateToken, async (req, res) => {
           }
           if (fullReply.thinking) {
             completeReply.thinking = fullReply.thinking;
-            // 发送思考过程到前端
-            console.log('🧠 发送思考过程到前端');
+            // 发送完整思考过程到前端（备用，通常已通过增量发送）
+            console.log('🧠 发送完整思考过程到前端');
             await sendChunk({ type: 'thinking', thinking: fullReply.thinking });
           }
+        }
+        
+        // 如果通过实时增量收集到了思考过程，也要保存
+        if (thinkingContent && !completeReply.thinking) {
+          completeReply.thinking = {
+            content: thinkingContent,
+            isDeepThinking: true,
+            model: 'DeepSeek-R1',
+            timestamp: new Date().toISOString()
+          };
+          console.log('🧠 保存实时收集的思考过程到数据库，长度:', thinkingContent.length);
         }
 
         // 如果前面获取到了天气数据，也要保存到数据库
