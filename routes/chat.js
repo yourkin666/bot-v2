@@ -43,7 +43,7 @@ function extractCityFromWeatherQuery(message) {
 // 发送消息并获取AI回复
 router.post('/send', authenticateToken, async (req, res) => {
   try {
-    const { message, chatId, useThinking = false, useSearch = false, attachedFiles = [] } = req.body;
+    const { message, chatId, useThinking = false, useSearch = false, useDeepThinking = false, attachedFiles = [] } = req.body;
     const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
@@ -53,7 +53,7 @@ router.post('/send', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log('📨 用户', userEmail, '发送消息:', { message, chatId, useThinking, useSearch, attachedFiles: attachedFiles.length });
+    console.log('📨 用户', userEmail, '发送消息:', { message, chatId, useThinking, useSearch, useDeepThinking, attachedFiles: attachedFiles.length });
 
     // 获取当前聊天
     let currentChatId = chatId;
@@ -92,7 +92,12 @@ router.post('/send', authenticateToken, async (req, res) => {
     const messages = updatedChat.messages;
 
     // 生成AI回复
-    const aiReply = await aiService.generateReply(messages, { useThinking, useSearch, files: attachedFiles });
+    // 如果启用深度思考，则将useThinking设为true以使用深度思考模型
+    const aiReply = await aiService.generateReply(messages, { 
+      useThinking: useDeepThinking || useThinking, 
+      useSearch, 
+      files: attachedFiles 
+    });
 
     // 保存AI回复
     await storage.addMessage(currentChatId, aiReply, userEmail);
@@ -338,7 +343,7 @@ router.get('/stats/user', authenticateToken, async (req, res) => {
 // 流式发送消息接口
 router.post('/stream', authenticateToken, async (req, res) => {
   try {
-    const { message, chatId, useThinking = false, useSearch = false, files = [] } = req.body;
+    const { message, chatId, useThinking = false, useSearch = false, useDeepThinking = false, files = [] } = req.body;
     const userEmail = getUserEmail(req);
 
     if (!message || message.trim() === '') {
@@ -348,7 +353,7 @@ router.post('/stream', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log('🔄 用户', userEmail, '开始流式对话:', { message, chatId, useThinking, useSearch, files: files?.length });
+    console.log('🔄 用户', userEmail, '开始流式对话:', { message, chatId, useThinking, useSearch, useDeepThinking, files: files?.length });
 
     // 设置SSE响应头
     res.writeHead(200, {
@@ -464,7 +469,7 @@ router.post('/stream', authenticateToken, async (req, res) => {
         await storage.addMessage(currentChatId, completeReply, userEmail);
       }
     }, {
-      useThinking,
+      useThinking: useDeepThinking || useThinking,
       useSearch,
       files: files || []
     });

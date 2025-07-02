@@ -1,16 +1,54 @@
+// 加载环境变量
+require('dotenv').config();
+
+// 验证必需的环境变量
+function validateEnvironment() {
+  const required = [
+    'OPENAI_API_KEY',
+    'DEEPSEEK_API_KEY', 
+    'SEARCH_API_KEY',
+    'JWT_SECRET',
+    'SESSION_SECRET',
+    'SMTP_USER',
+    'SMTP_PASS',
+    'EMAIL_FROM'
+  ];
+
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error('❌ 缺少必需的环境变量:');
+    missing.forEach(key => console.error(`   - ${key}`));
+    console.error('📝 请检查 .env 文件或参考 .env.example 模板');
+    process.exit(1);
+  } else {
+    console.log('✅ 所有环境变量配置完成');
+  }
+}
+
+// 验证环境变量
+validateEnvironment();
+
 // 配置文件
 module.exports = {
   // AI 对话服务配置（使用硅基流动）
   openai: {
-    apiKey: 'sk-icupqsqwcgsfnqbwpcgfertxbdlkksapxtacxlupjzanguyv',
-    baseURL: 'https://api.siliconflow.cn/v1',
-    model: 'Qwen/Qwen2.5-7B-Instruct' // 硅基流动推荐的模型
+    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_BASE_URL || 'https://api.siliconflow.cn/v1',
+    model: process.env.OPENAI_MODEL || 'Qwen/Qwen2.5-7B-Instruct'
+  },
+  
+  // 深度思考模型配置（硅基流动 deepseek R1）
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: process.env.DEEPSEEK_BASE_URL || 'https://api.siliconflow.cn/v1',
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-ai/DeepSeek-R1'
   },
   
   // 联网搜索服务配置
   search: {
-    apiKey: 'sk-38eaefcfac2d4c39a50c3cd686022e2d',
-    enabled: true
+    apiKey: process.env.SEARCH_API_KEY,
+    enabled: process.env.SEARCH_ENABLED === 'true'
   },
   
   // 服务器配置
@@ -39,15 +77,14 @@ module.exports = {
     // 使用QQ邮箱或其他SMTP服务
     smtp: {
       host: process.env.SMTP_HOST || 'smtp.qq.com',
-      port: process.env.SMTP_PORT || 587,
+      port: parseInt(process.env.SMTP_PORT) || 587,
       secure: false, // true for 465, false for other ports
       auth: {
-        // ⚠️ 请在下面填入您的邮箱和授权码
-        user: process.env.SMTP_USER || '2518016656@qq.com', // 您的QQ邮箱
-        pass: process.env.SMTP_PASS || 'zybjsohgnvardjbh'  // 您的QQ邮箱授权码
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
       }
     },
-    from: process.env.EMAIL_FROM || '2518016656@qq.com', // 发件人邮箱
+    from: process.env.EMAIL_FROM,
     // 验证码模板
     templates: {
       verification: {
