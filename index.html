@@ -917,6 +917,14 @@
       <div class="p-4 md:p-3 mobile-input-area">
         <div class="flex items-center gap-2 mb-3">
 
+          <button id="deep-thinking-toggle"
+            class="toggle-button bg-gray-50 text-gray-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-gray-100 transition-colors mobile-btn">
+            <div class="w-4 h-4 flex items-center justify-center">
+              <i class="ri-brain-line"></i>
+            </div>
+            <span>深度思考</span>
+          </button>
+
           <button id="search-toggle"
             class="toggle-button bg-gray-50 text-gray-600 py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 whitespace-nowrap hover:bg-gray-100 transition-colors mobile-btn">
             <div class="w-4 h-4 flex items-center justify-center">
@@ -1233,6 +1241,12 @@
       };
       // 按钮切换功能
       searchToggle.addEventListener('click', function () {
+        this.classList.toggle('active');
+      });
+
+      // 深度思考按钮切换功能
+      const deepThinkingToggle = document.getElementById('deep-thinking-toggle');
+      deepThinkingToggle.addEventListener('click', function () {
         this.classList.toggle('active');
       });
 
@@ -1632,6 +1646,7 @@
               chatId: window.currentChatId,
               useThinking: false,
               useSearch: searchToggle.classList.contains('active'),
+              useDeepThinking: deepThinkingToggle.classList.contains('active'),
               files: uploadedFiles // 包含文件信息
             }),
             signal: window.currentStreamController.signal // 添加中断信号
@@ -1997,6 +2012,7 @@ ${renderedMessage}
         const messageInput = document.querySelector('.message-input');
         const sendButton = document.getElementById('send-button'); // 修正：使用ID选择器
         const searchToggle = document.getElementById('search-toggle');
+        const deepThinkingToggle = document.getElementById('deep-thinking-toggle');
 
         if (disabled) {
           // 不禁用输入框，只改变外观提示用户AI正在响应
@@ -2021,6 +2037,9 @@ ${renderedMessage}
           if (searchToggle) {
             searchToggle.title = 'AI响应中，新消息生效';
           }
+          if (deepThinkingToggle) {
+            deepThinkingToggle.title = 'AI响应中，新消息生效';
+          }
         } else {
           // 恢复正常状态
           messageInput.placeholder = '和AI小子聊天吧...';
@@ -2043,6 +2062,9 @@ ${renderedMessage}
           // 恢复切换按钮提示
           if (searchToggle) {
             searchToggle.title = '开启联网搜索';
+          }
+          if (deepThinkingToggle) {
+            deepThinkingToggle.title = '开启深度思考';
           }
         }
       }
@@ -2372,15 +2394,32 @@ ${renderedMessage}
 
         let thinkingHTML = '';
         if (thinking) {
+          const isDeepThinking = thinking.isDeepThinking || thinking.model === 'DeepSeek-R1';
+          const thinkingIcon = isDeepThinking ? 'ri-brain-2-line' : 'ri-brain-line';
+          const thinkingLabel = isDeepThinking ? '🧠 深度思考过程' : '💭 思考过程';
+          const thinkingBg = isDeepThinking ? 'bg-gradient-to-r from-slate-50 to-gray-50' : 'bg-blue-50';
+          const thinkingBorder = isDeepThinking ? 'border-l-4 border-indigo-400' : 'border-l-4 border-blue-400';
+          const thinkingText = isDeepThinking ? 'text-slate-600' : 'text-blue-800';
+          
           thinkingHTML = `
     <div class="mb-3">
-      <button class="thinking-toggle flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-        <i class="ri-brain-line"></i>
-        <span>思考过程</span>
-        <i class="ri-arrow-down-s-line"></i>
+      <button class="thinking-toggle flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group">
+        <i class="${thinkingIcon} text-base ${isDeepThinking ? 'text-indigo-600' : 'text-blue-600'}"></i>
+        <span>${thinkingLabel}</span>
+        <i class="ri-arrow-down-s-line transition-transform duration-300 group-hover:translate-y-0.5"></i>
       </button>
-      <div class="thinking-process mt-2 bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
-        ${thinking.content}
+      <div class="thinking-process mt-3 ${thinkingBg} ${thinkingBorder} rounded-xl p-4 text-sm ${thinkingText} shadow-sm">
+        <div class="thinking-content leading-relaxed">
+          ${thinking.content.split('\n').map(line => 
+            line.trim() ? `<div class="mb-2 pl-3 ${line.includes('→') ? 'font-medium text-gray-700' : 'text-gray-600'}">${line}</div>` : ''
+          ).filter(Boolean).join('')}
+        </div>
+        ${isDeepThinking ? `
+          <div class="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 text-xs text-gray-500">
+            <i class="ri-cpu-line"></i>
+            <span>由 DeepSeek R1 深度思考模型生成</span>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -2392,6 +2431,18 @@ ${renderedMessage}
     <div class="mb-3 text-xs text-gray-500 flex items-center gap-1">
       <i class="ri-search-line"></i>
       <span>已联网搜索${searchResultsCount ? ` (${searchResultsCount}条结果)` : ''}</span>
+    </div>
+  `;
+        }
+
+        // 深度思考状态显示
+        let deepThinkingHTML = '';
+        const deepThinkingToggle = document.getElementById('deep-thinking-toggle');
+        if (deepThinkingToggle && deepThinkingToggle.classList.contains('active')) {
+          deepThinkingHTML = `
+    <div class="mb-3 text-xs text-gray-500 flex items-center gap-1">
+      <i class="ri-brain-line"></i>
+      <span>已开启深度思考</span>
     </div>
   `;
         }
@@ -2436,6 +2487,7 @@ ${renderedMessage}
       </div>
       ${thinkingHTML}
       ${searchHTML}
+      ${deepThinkingHTML}
       ${weatherHTML}
       <div class="bg-[#F7F8FA] rounded-lg py-3 px-4 text-gray-800 markdown-content">
         ${renderedMessage}

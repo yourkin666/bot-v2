@@ -5,13 +5,20 @@ const weatherService = require('./weatherService');
 
 class AIService {
   constructor() {
-    // 初始化OpenAI客户端
+    // 初始化OpenAI客户端（默认模型）
     this.openai = new OpenAI({
       apiKey: config.openai.apiKey,
       baseURL: config.openai.baseURL
     });
 
+    // 初始化深度思考模型客户端
+    this.deepseekClient = new OpenAI({
+      apiKey: config.deepseek.apiKey,
+      baseURL: config.deepseek.baseURL
+    });
+
     this.model = config.openai.model;
+    this.deepseekModel = config.deepseek.model;
     this.maxTokens = config.ai.maxTokens;
     this.temperature = config.ai.temperature;
 
@@ -168,16 +175,85 @@ ${searchResults.results.map((r, i) =>
 
       console.log('📤 发送到AI:', chatMessages[chatMessages.length - 1]);
 
-      // 调用OpenAI API
-      const response = await this.openai.chat.completions.create({
-        model: this.model,
-        messages: chatMessages,
-        temperature: temperature || this.temperature,
-        max_tokens: maxTokens || this.maxTokens,
-        stream: false
-      });
+      let response;
+      let aiReply;
 
-      const aiReply = response.choices[0].message.content;
+      // 根据useThinking参数选择使用的模型和客户端
+      if (useThinking) {
+        console.log('🤔 启用深度思考模式，使用DeepSeek R1模型');
+        
+        // 为深度思考模式添加特殊的系统提示
+        const deepThinkingPrompt = `${this.systemPrompt}
+
+🧠 深度思考模式已启用：
+请进行更深入的分析和思考，提供更详细、更有洞察力的回答。你可以：
+1. 分析问题的多个角度
+2. 提供更深层次的解释
+3. 考虑潜在的关联和影响
+4. 给出更全面的建议
+
+记住仍要保持AI小子的友善特质，用孩子能理解的语言表达深刻的思考。`;
+
+        const deepThinkingMessages = [
+          { role: 'system', content: deepThinkingPrompt },
+          ...messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        ];
+
+        // 如果有搜索结果或文件分析，也要添加到深度思考的消息中
+        if (fileAnalysis && fileAnalysis.length > 0) {
+          deepThinkingMessages.splice(-1, 0, {
+            role: 'system',
+            content: `[文件分析结果]
+用户上传了 ${fileAnalysis.length} 个文件，以下是分析结果：
+
+${fileAnalysis.map((analysis, i) =>
+              `文件 ${i + 1}: ${analysis.filename}
+类型: ${analysis.type}
+分析结果: ${analysis.analysis}
+${analysis.details ? `详细信息: ${analysis.details}` : ''}`
+            ).join('\n\n')}`
+          });
+        }
+
+        if (searchResults && searchResults.success) {
+          deepThinkingMessages.splice(-1, 0, {
+            role: 'system',
+            content: `[联网搜索结果]
+搜索关键词: ${searchResults.query}
+找到 ${searchResults.totalResults} 个相关结果
+
+主要信息摘要:
+${searchResults.summary}
+
+详细结果:
+${searchResults.results.map((r, i) =>
+              `${i + 1}. ${r.title}\n   来源: ${r.siteName}\n   摘要: ${r.snippet}\n   链接: ${r.url}`
+            ).join('\n\n')}`
+          });
+        }
+
+        response = await this.deepseekClient.chat.completions.create({
+          model: this.deepseekModel,
+          messages: deepThinkingMessages,
+          temperature: temperature || this.temperature,
+          max_tokens: maxTokens || this.maxTokens,
+          stream: false
+        });
+      } else {
+        console.log('💭 使用标准模式，使用默认模型');
+        response = await this.openai.chat.completions.create({
+          model: this.model,
+          messages: chatMessages,
+          temperature: temperature || this.temperature,
+          max_tokens: maxTokens || this.maxTokens,
+          stream: false
+        });
+      }
+
+      aiReply = response.choices[0].message.content;
       console.log('📥 AI回复:', aiReply);
 
       // 构建回复对象
@@ -206,10 +282,11 @@ ${searchResults.results.map((r, i) =>
         console.log('🎨 已添加文件分析信息到回复中');
       }
 
-      // 如果启用思考过程，生成思考内容
-      if (useThinking) {
-        reply.thinking = await this.generateThinkingProcess(messages, searchResults);
-      }
+      // 深度思考模式下，思考过程已经由DeepSeek模型完成
+      // 这里不需要额外生成思考内容，避免重复调用和错误
+      // if (useThinking) {
+      //   reply.thinking = await this.generateThinkingProcess(messages, searchResults);
+      // }
 
       return reply;
 
@@ -257,7 +334,7 @@ ${searchResults.results.map((r, i) =>
 请用简单的语言描述你的思考过程，就像在和老师交流一样。`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: this.model,
         messages: [
           { role: 'user', content: thinkingPrompt }
         ],
@@ -471,29 +548,129 @@ ${searchResults.results.map((r, i) =>
         console.log('🔍 流式输出 - 已将搜索结果添加到对话中');
       }
 
-      const stream = await this.openai.chat.completions.create({
-        model: this.model,
+      let stream;
+      let selectedClient;
+      let selectedModel;
+
+      // 根据useThinking参数选择使用的模型和客户端
+      if (useThinking) {
+        console.log('🤔 流式输出 - 启用深度思考模式，使用DeepSeek R1模型');
+        console.log('🔧 深度思考模式配置: 客户端类型=', this.deepseekClient.constructor.name, '模型=', this.deepseekModel);
+        
+        // 为深度思考模式添加特殊的系统提示
+        const deepThinkingPrompt = `${this.systemPrompt}
+
+🧠 深度思考模式已启用：
+请进行更深入的分析和思考，提供更详细、更有洞察力的回答。你可以：
+1. 分析问题的多个角度
+2. 提供更深层次的解释
+3. 考虑潜在的关联和影响
+4. 给出更全面的建议
+
+记住仍要保持AI小子的友善特质，用孩子能理解的语言表达深刻的思考。`;
+
+        chatMessages[0].content = deepThinkingPrompt;
+        selectedClient = this.deepseekClient;
+        selectedModel = this.deepseekModel;
+      } else {
+        console.log('💭 流式输出 - 使用标准模式，使用默认模型');
+        console.log('🔧 标准模式配置: 客户端类型=', this.openai.constructor.name, '模型=', this.model);
+        selectedClient = this.openai;
+        selectedModel = this.model;
+      }
+
+      console.log('📤 准备调用API - 客户端:', selectedClient.constructor.name, '模型:', selectedModel);
+      
+      stream = await selectedClient.chat.completions.create({
+        model: selectedModel,
         messages: chatMessages,
         temperature: 0.7,
         max_tokens: 1000,
         stream: true
       });
 
+      console.log('✅ API调用成功 - 开始接收流式响应');
+
       let fullReply = '';
+      let thinkingContent = '';
+      let finalAnswer = '';
+      let isInThinking = false;
+      let buffer = '';
+
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || '';
         if (content) {
+          console.log('📥 收到内容块:', JSON.stringify(content)); // 调试输出
+          buffer += content;
+          
+          // 检查是否开始思考过程
+          if (buffer.includes('<think>') && !isInThinking) {
+            const thinkStart = buffer.indexOf('<think>');
+            if (thinkStart >= 0) {
+              // 发送思考开始前的内容
+              const beforeThink = buffer.substring(0, thinkStart);
+              if (beforeThink.trim()) {
+                finalAnswer += beforeThink;
+                callback(beforeThink, false);
+              }
+              
+              isInThinking = true;
+              buffer = buffer.substring(thinkStart + 7); // 移除 '<think>'
+              console.log('🤔 开始接收思考过程');
+            }
+          }
+          
+          // 检查是否结束思考过程
+          if (buffer.includes('</think>') && isInThinking) {
+            const thinkEnd = buffer.indexOf('</think>');
+            if (thinkEnd >= 0) {
+              // 提取思考内容
+              const thinkPart = buffer.substring(0, thinkEnd);
+              thinkingContent += thinkPart;
+              
+              isInThinking = false;
+              buffer = buffer.substring(thinkEnd + 8); // 移除 '</think>'
+              console.log('🤔 思考过程结束，长度:', thinkingContent.length);
+              
+              // 继续处理剩余内容
+              if (buffer.trim()) {
+                finalAnswer += buffer;
+                callback(buffer, false);
+                buffer = '';
+              }
+            }
+          } else if (isInThinking) {
+            // 在思考过程中，累积思考内容
+            thinkingContent += content;
+          } else {
+            // 正常内容，直接发送
+            finalAnswer += content;
+            callback(content, false);
+            buffer = '';
+          }
+          
           fullReply += content;
-          callback(content, false); // false表示还没结束
         }
       }
 
       // 构建完整回复对象
       const completeReply = {
         role: 'assistant',
-        content: fullReply,
+        content: finalAnswer || fullReply, // 优先使用解析后的最终答案
         timestamp: new Date().toISOString()
       };
+
+
+
+      // 如果有原始思考过程，也添加到回复中
+      if (thinkingContent.trim()) {
+        completeReply.thinking = {
+          content: thinkingContent.trim(),
+          isDeepThinking: useThinking,
+          model: useThinking ? 'DeepSeek-R1' : this.model
+        };
+        console.log('🤔 已添加思考过程到回复中，长度:', thinkingContent.length);
+      }
 
       // 添加搜索信息到回复中
       if (searchResults && searchResults.success) {
@@ -514,10 +691,11 @@ ${searchResults.results.map((r, i) =>
         console.log('🎨 流式输出 - 已添加文件分析信息到回复中');
       }
 
-      // 如果启用思考过程，生成思考内容
-      if (useThinking) {
-        completeReply.thinking = await this.generateThinkingProcess(messages, searchResults);
-      }
+      // 深度思考模式下，思考过程已经在generateReply中由DeepSeek模型完成
+      // 这里不需要额外生成思考内容，避免重复调用和错误
+      // if (useThinking) {
+      //   completeReply.thinking = await this.generateThinkingProcess(messages, searchResults);
+      // }
 
       // 发送结束信号，并传递完整回复对象
       callback('', true, completeReply); // true表示结束，第三个参数是完整回复对象
