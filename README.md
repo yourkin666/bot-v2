@@ -1,6 +1,6 @@
 # 🤖 AI 小子 - 智能儿童聊天机器人
 
-一个专为儿童设计的多模态 AI 聊天助手，支持文字、图片、音频、视频等多种形式的智能对话，集成深度思考功能。
+一个专为儿童设计的多模态 AI 聊天助手，支持文字、图片、音频、视频等多种形式的智能对话。
 
 ## ✨ 核心特性
 
@@ -18,7 +18,6 @@
 - **🌤️ 天气查询**: 智能天气信息获取
 - **🎙️ 语音交互**: 录音功能和语音识别
 - **💭 思考过程**: 可视化 AI 思考过程
-- **🤔 深度思考**: 基于 DeepSeek R1 的高级推理能力
 
 ### 🎯 用户体验
 
@@ -27,7 +26,6 @@
 - **📚 聊天历史**: 完整的对话记录管理
 - **🎨 美观界面**: 现代化 UI 设计
 - **🔧 错误处理**: 智能降级和用户友好提示
-- **🔐 安全认证**: 多种登录方式和数据保护
 
 ## 🚀 快速开始
 
@@ -51,7 +49,6 @@ npm install
 使用自动化脚本进行配置：
 
 ```bash
-chmod +x scripts/setup-env.sh
 ./scripts/setup-env.sh
 ```
 
@@ -66,36 +63,15 @@ cp .env.example .env
 2. **编辑 `.env` 文件，填入您的 API 密钥**：
 
 ```bash
-# ===== 🤖 AI 服务配置 =====
-OPENAI_API_KEY=your-openai-api-key              # 🤖 主要AI模型密钥
-DEEPSEEK_API_KEY=your-deepseek-api-key          # 🧠 深度思考模型密钥
-
-# ===== 🔍 搜索服务配置 =====
-SEARCH_API_KEY=your-search-api-key              # 🔍 搜索功能密钥
-
-# ===== 🔐 安全配置 =====
-JWT_SECRET=your-strong-jwt-secret-key           # 🔐 用户认证密钥（建议32字符+）
-SESSION_SECRET=your-strong-session-secret       # 🔐 会话密钥（建议32字符+）
-
-# ===== 📧 邮件服务配置 =====
-SMTP_HOST=smtp.qq.com                           # 📧 SMTP服务器
-SMTP_PORT=587                                   # 📧 SMTP端口
-SMTP_USER=your-email@qq.com                     # 📧 邮箱地址
-SMTP_PASS=your-email-auth-code                  # 📧 邮箱授权码
-EMAIL_FROM=your-email@qq.com                    # 📧 发件人邮箱
-
-# ===== 🌐 OAuth 配置（可选）=====
-GOOGLE_CLIENT_ID=your-google-client-id          # 🌐 Google OAuth客户端ID
-GOOGLE_CLIENT_SECRET=your-google-client-secret  # 🌐 Google OAuth客户端密钥
-GITHUB_CLIENT_ID=your-github-client-id          # 🌐 GitHub OAuth客户端ID
-GITHUB_CLIENT_SECRET=your-github-client-secret  # 🌐 GitHub OAuth客户端密钥
-
-# ===== ⚙️ 服务器配置 =====
-PORT=3002                                       # ⚙️ 服务器端口
-NODE_ENV=development                            # ⚙️ 运行环境
-
-# ===== 🌤️ 天气服务配置（可选）=====
-WEATHER_API_KEY=your-weather-api-key            # 🌤️ 天气API密钥
+# 必需配置项
+OPENAI_API_KEY=your-openai-api-key         # 🤖 主要AI模型密钥
+DEEPSEEK_API_KEY=your-deepseek-api-key     # 🧠 深度思考模型密钥
+SEARCH_API_KEY=your-search-api-key         # 🔍 搜索功能密钥
+JWT_SECRET=your-jwt-secret                 # 🔐 用户认证密钥
+SESSION_SECRET=your-session-secret         # 🔐 会话密钥
+SMTP_USER=your-email@qq.com               # 📧 邮箱地址
+SMTP_PASS=your-email-auth-code            # 📧 邮箱授权码
+EMAIL_FROM=your-email@qq.com              # 📧 发件人邮箱
 ```
 
 #### 📖 详细配置说明
@@ -141,10 +117,6 @@ npm run dev
 
 # 生产模式
 npm start
-
-# 使用 PM2（推荐生产环境）
-npm install -g pm2
-pm2 start ecosystem.config.js
 ```
 
 ### 5. 访问应用
@@ -153,36 +125,12 @@ pm2 start ecosystem.config.js
 - **登录页面**: http://localhost:3002/login.html
 - **展示页面**: http://localhost:3002/webpage
 
-## 🧠 深度思考功能
-
-### 功能特点
-
-- **🚀 前沿模型**: 集成 DeepSeek R1 大模型，具备强大的推理能力
-- **🎯 智能切换**: 一键开启/关闭深度思考模式
-- **⚡ 无缝体验**: 与现有功能完美集成
-- **🔄 混合模式**: 可同时使用深度思考和联网搜索
-
-### 使用方法
-
-1. **开启深度思考**：点击聊天界面的"🤔 深度思考"按钮
-2. **发送消息**：正常输入你的问题或需求
-3. **获得回复**：AI 会使用更强的推理能力来回答
-4. **切换模式**：可随时开启/关闭深度思考功能
-
-### 适用场景
-
-- **🧮 复杂数学题**: 多步骤计算和逻辑推理
-- **📚 学习辅导**: 深度解析知识点和概念
-- **🔍 问题分析**: 复杂问题的多角度分析
-- **💡 创意思考**: 需要深度思考的创意任务
-
 ## 🔐 用户认证和 OAuth 配置
 
 ### 快速配置 Google OAuth
 
 ```bash
 # 方法1：自动配置（推荐）
-chmod +x setup-oauth.sh
 ./setup-oauth.sh
 
 # 方法2：测试当前配置
@@ -205,44 +153,28 @@ node test-oauth.js
 
 ```
 bot-v2/
-├── server.js                    # 主服务器入口
-├── config.js                    # 配置文件
-├── package.json                 # 项目依赖配置
-├── .env                         # 环境变量（不提交到Git）
-├── .env.example                 # 环境变量模板
-├── ecosystem.config.js          # PM2 配置文件
-├── routes/                      # 路由模块
-│   ├── auth.js                  # 用户认证路由
-│   ├── chat.js                  # 聊天功能路由
-│   ├── upload.js                # 文件上传路由
-│   ├── search.js                # 搜索功能路由
-│   ├── voice.js                 # 语音功能路由
-│   └── weather.js               # 天气功能路由
-├── services/                    # 服务模块
-│   ├── aiService.js             # AI核心服务（包含深度思考）
-│   ├── searchService.js         # 搜索服务
-│   ├── voiceService.js          # 语音服务
-│   ├── emailService.js          # 邮件服务
-│   ├── userService.js           # 用户服务
-│   └── weatherService.js        # 天气服务
-├── middleware/                  # 中间件
-│   └── auth.js                  # 认证中间件
-├── utils/                       # 工具模块
-│   └── storage.js               # 数据存储工具
-├── scripts/                     # 脚本文件
-│   └── setup-env.sh             # 环境配置脚本
-├── data/                        # 数据存储目录
-│   ├── users.json               # 用户数据
-│   ├── chats_backup.json        # 聊天记录备份
-│   └── users/                   # 用户个人数据
-├── uploads/                     # 文件上传目录
-├── index.html                   # 主聊天界面
-├── login.html                   # 登录页面
-├── webpage.html                 # 项目展示页面
-├── ENVIRONMENT_SETUP.md         # 环境配置指南
-├── GOOGLE_OAUTH_SETUP.md        # OAuth配置指南
-├── QUICK_START.md               # 快速开始指南
-└── README.md                    # 项目文档
+├── server.js                 # 主服务器入口
+├── config.js                 # 配置文件
+├── package.json              # 项目依赖配置
+├── routes/                   # 路由模块
+│   ├── chat.js              # 聊天功能路由
+│   ├── upload.js            # 文件上传路由
+│   ├── search.js            # 搜索功能路由
+│   ├── voice.js             # 语音功能路由
+│   └── weather.js           # 天气功能路由
+├── services/                 # 服务模块
+│   ├── aiService.js         # AI核心服务
+│   ├── searchService.js     # 搜索服务
+│   ├── voiceService.js      # 语音服务
+│   └── weatherService.js    # 天气服务
+├── utils/                    # 工具模块
+│   └── storage.js           # 数据存储工具
+├── data/                     # 数据存储目录
+│   └── chats.json           # 聊天记录
+├── uploads/                  # 文件上传目录
+├── index.html               # 主聊天界面
+├── webpage.html             # 项目展示页面
+└── README.md               # 项目文档
 ```
 
 ## 🔌 API 接口文档
@@ -259,7 +191,6 @@ Content-Type: application/json
   "message": "你好，AI小子！",
   "chatId": "optional-chat-id",
   "useThinking": false,
-  "useDeepThinking": false,        // 🆕 深度思考功能
   "useSearch": false,
   "attachedFiles": [
     {
@@ -283,7 +214,6 @@ Content-Type: application/json
   "message": "请分析这张图片",
   "chatId": "optional-chat-id",
   "useThinking": false,
-  "useDeepThinking": false,        // 🆕 深度思考功能
   "useSearch": true,
   "attachedFiles": [...]
 }
@@ -299,40 +229,6 @@ GET /api/chat/history
 
 ```http
 GET /api/chat/:chatId
-```
-
-### 认证相关
-
-#### 邮箱登录
-
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-#### 邮箱注册
-
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "verificationCode": "123456"
-}
-```
-
-#### OAuth 登录
-
-```http
-GET /api/auth/google
-GET /api/auth/github
 ```
 
 ### 文件上传相关
@@ -464,13 +360,9 @@ M4V, MPEG, MPG, F4V, SWF, ASF, RM, RMVB 等
 - **运行环境**: Node.js 18+
 - **Web 框架**: Express.js
 - **文件处理**: Multer (文件上传)
-- **AI 服务**:
-  - OpenAI API (主要模型)
-  - DeepSeek R1 API (深度思考功能)
+- **AI 服务**: OpenAI API / 兼容接口
 - **搜索服务**: Brave Search API
 - **天气服务**: OpenWeatherMap API
-- **认证服务**: Passport.js (OAuth)
-- **邮件服务**: Nodemailer
 
 ### 前端技术
 
@@ -479,14 +371,12 @@ M4V, MPEG, MPG, F4V, SWF, ASF, RM, RMVB 等
 - **图标库**: Remix Icons
 - **数学渲染**: MathJax
 - **Markdown**: Marked.js
-- **实时通信**: Server-Sent Events (SSE)
 
 ### 存储方案
 
 - **聊天数据**: JSON 文件存储
 - **文件存储**: 本地文件系统
-- **配置管理**: 环境变量 + JavaScript 配置文件
-- **安全存储**: 敏感信息使用环境变量
+- **配置管理**: JavaScript 配置文件
 
 ## 🎮 使用示例
 
@@ -495,30 +385,6 @@ M4V, MPEG, MPG, F4V, SWF, ASF, RM, RMVB 等
 ```
 用户: 你好，AI小子！
 AI小子: 你好呀！我是AI小子，很高兴认识你！😊 你想和我聊什么呢？
-```
-
-### 深度思考功能
-
-```
-用户: [开启深度思考] 一个圆形花园的半径是10米，如果要在花园周围修建一条宽度为2米的环形小径，小径的面积是多少？
-
-AI小子: [使用 DeepSeek R1 深度思考]
-🤔 让我深入分析这个几何问题...
-
-这是一个环形面积计算问题。我需要：
-1. 计算外圆面积（花园半径 + 小径宽度）
-2. 计算内圆面积（花园本身）
-3. 用外圆面积减内圆面积得到小径面积
-
-内圆半径：10米
-外圆半径：10 + 2 = 12米
-
-小径面积 = π × 12² - π × 10²
-         = π × (144 - 100)
-         = 44π
-         ≈ 138.23平方米
-
-所以环形小径的面积约为138.23平方米。
 ```
 
 ### 图片分析
@@ -547,37 +413,15 @@ AI小子: 我来为你搜索最新的太空探索消息！🚀
 根据搜索结果，最近NASA的阿尔忒弥斯计划有了新进展...
 ```
 
-### 混合模式
-
-```
-用户: [同时开启深度思考和搜索] 分析一下人工智能在教育领域的最新发展趋势
-
-AI小子: [使用深度思考+联网搜索]
-🤔 我来深入分析AI在教育领域的发展趋势...
-🔍 同时搜索最新的相关信息...
-
-[深度分析结合最新资讯的综合回答]
-```
-
 ## 🔧 配置说明
 
 ### OpenAI 配置
 
 ```javascript
 openai: {
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: "https://api.openai.com/v1",
-  model: "gpt-4o-mini"           // 建议支持视觉的模型
-}
-```
-
-### DeepSeek 配置
-
-```javascript
-deepseek: {
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com/v1",
-  model: "deepseek-ai/DeepSeek-R1"
+  apiKey: "sk-...",              // API密钥
+  baseURL: "https://api.openai.com/v1", // API基础URL
+  model: "gpt-4o-mini"           // 模型名称(建议支持视觉的模型)
 }
 ```
 
@@ -585,8 +429,8 @@ deepseek: {
 
 ```javascript
 server: {
-  port: process.env.PORT || 3002,
-  cors: true
+  port: 3002,                    // 服务器端口
+  cors: true                     // 是否启用CORS
 }
 ```
 
@@ -594,7 +438,7 @@ server: {
 
 ```javascript
 ai: {
-  maxTokens: 2000,               // 最大输出长度
+  maxTokens: 1000,               // 最大输出长度
   temperature: 0.7,              // 创造性参数
   presencePenalty: 0,           // 重复惩罚
   frequencyPenalty: 0           // 频率惩罚
@@ -605,94 +449,55 @@ ai: {
 
 ### 常见问题
 
-#### 1. 环境变量问题
+#### 1. API 相关问题
 
 ```bash
-# 检查环境变量是否正确加载
-node -e "console.log(process.env.OPENAI_API_KEY)"
-
-# 验证 .env 文件格式
-cat .env | grep -v '^#' | grep -v '^$'
-```
-
-#### 2. API 相关问题
-
-```bash
-# 检查 OpenAI API 密钥
+# 检查API密钥
 curl -H "Authorization: Bearer YOUR_API_KEY" https://api.openai.com/v1/models
 
-# 检查 DeepSeek API 密钥
-curl -H "Authorization: Bearer YOUR_API_KEY" https://api.deepseek.com/v1/models
+# 检查余额
+curl -H "Authorization: Bearer YOUR_API_KEY" https://api.openai.com/v1/usage
 ```
 
-#### 3. 深度思考功能问题
-
-- **模型调用失败**: 检查 DEEPSEEK_API_KEY 是否正确配置
-- **按钮无响应**: 检查前端 JavaScript 是否正常加载
-- **响应慢**: DeepSeek R1 模型推理时间较长，属于正常现象
-
-#### 4. 文件上传问题
+#### 2. 文件上传问题
 
 - **文件大小限制**: 默认 100MB，可在 upload.js 中修改
 - **文件类型限制**: 检查 fileFilter 配置
 - **存储权限**: 确保 uploads 目录有写入权限
 
-#### 5. 端口占用问题
+#### 3. 端口占用问题
 
 ```bash
 # 查看端口占用
 lsof -i :3002
 
-# 杀死占用进程
-kill -9 <PID>
-
-# 修改端口
+# 修改配置文件中的端口
+# 或使用环境变量
 PORT=3003 npm start
 ```
 
-#### 6. 认证问题
+#### 4. 视觉功能问题
 
-- **JWT 密钥**: 确保 JWT_SECRET 配置且足够复杂
-- **OAuth 回调**: 检查回调 URL 是否正确配置
-- **邮件服务**: 验证 SMTP 配置和授权码
+- 确保使用支持视觉的模型(如 gpt-4o-mini)
+- 检查图片 URL 是否可访问
+- 验证 API 密钥是否有足够权限
 
 ## 📈 性能优化建议
 
 ### 1. 生产环境部署
 
-```bash
-# 使用 PM2 进程管理
-npm install -g pm2
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
+- 使用 PM2 进程管理
+- 配置 Nginx 反向代理
+- 启用 HTTPS
+- 使用 CDN 加速静态资源
 
-### 2. Nginx 反向代理
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3002;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### 3. 数据库升级
+### 2. 数据库升级
 
 - 替换 JSON 存储为 MongoDB/PostgreSQL
 - 实现数据备份和恢复
 - 添加数据索引优化查询
 
-### 4. 缓存优化
+### 3. 缓存优化
 
 - Redis 缓存 AI 响应
 - 文件上传 CDN 存储
@@ -700,16 +505,7 @@ server {
 
 ## 📚 更新日志
 
-### v2.1.0 (2025-01-20) - 深度思考版本
-
-- 🧠 **新增深度思考功能**: 集成 DeepSeek R1 大模型
-- 🔐 **环境变量优化**: 敏感信息分离，提高安全性
-- 📚 **文档完善**: 新增环境配置指南和脚本
-- 🔧 **配置验证**: 启动时验证必需环境变量
-- 🎨 **界面优化**: 深度思考按钮和状态显示
-- ⚡ **性能提升**: 优化模型切换和响应速度
-
-### v2.0.0 (2024-12-30) - 多模态版本
+### v2.0.0 (2025-06-30) - 多模态版本
 
 - ✨ **新增多模态分析**: 支持图片、音频、视频、文档分析
 - 📤 **文件上传系统**: 完整的文件管理功能
@@ -718,9 +514,8 @@ server {
 - 🎙️ **语音功能**: 录音和语音识别
 - ⚡ **流式输出**: 优化用户体验
 - 🎨 **界面升级**: 现代化 UI 设计
-- 🔐 **用户认证**: OAuth 登录和邮箱验证
 
-### v1.0.0 (2024-06) - 基础版本
+### v1.0.0 (2024) - 基础版本
 
 - 💬 基础聊天功能
 - 📚 聊天历史记录
@@ -741,41 +536,10 @@ server {
 
 ### 代码规范
 
-- 使用 ES6+ 语法
+- 使用 ES6+语法
 - 遵循 Google JavaScript Style Guide
 - 添加必要的注释和文档
 - 保持代码简洁和可读性
-- 敏感信息使用环境变量
-
-### 测试指南
-
-```bash
-# 运行基本测试
-npm test
-
-# 测试 OAuth 配置
-node test-oauth.js
-
-# 测试环境变量
-node -e "require('dotenv').config(); console.log('✅ 环境变量加载成功');"
-```
-
-## 🔒 安全注意事项
-
-### 环境变量安全
-
-- ✅ 使用强密码和复杂密钥
-- ✅ 定期轮换 API 密钥
-- ✅ 不要在代码中硬编码敏感信息
-- ✅ 确保 `.env` 文件不被提交到版本控制
-
-### 生产环境建议
-
-- 🔒 启用 HTTPS
-- 🔒 配置防火墙
-- 🔒 定期更新依赖
-- 🔒 监控和日志记录
-- 🔒 备份重要数据
 
 ## 📄 许可证
 
@@ -783,18 +547,11 @@ node -e "require('dotenv').config(); console.log('✅ 环境变量加载成功')
 
 ## 💡 致谢
 
-- **OpenAI** - 提供强大的 AI 能力
-- **DeepSeek** - 提供先进的推理模型
-- **Tailwind CSS** - 优雅的 CSS 框架
-- **Remix Icons** - 精美的图标库
-- **所有贡献者** - 感谢每一位为项目做出贡献的开发者
-
-## 🌟 特别鸣谢
-
-感谢 **DeepSeek** 团队开发的 R1 模型，为本项目的深度思考功能提供了强大的技术支持。
+- OpenAI - 提供强大的 AI 能力
+- Tailwind CSS - 优雅的 CSS 框架
+- Remix Icons - 精美的图标库
+- 所有为开源社区做出贡献的开发者们
 
 ---
 
 **🌟 如果这个项目对你有帮助，请给它一个 Star！**
-
-**🤔 有问题？查看 [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) 获取详细配置指南**

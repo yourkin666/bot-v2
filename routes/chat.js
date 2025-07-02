@@ -436,6 +436,12 @@ router.post('/stream', authenticateToken, async (req, res) => {
         // 发送内容块
         aiContent += content;
         await sendChunk({ type: 'content', content: content });
+      } else if (!isEnd && !content && fullReply) {
+        // 处理中间发送的特殊数据（如思考过程）
+        if (fullReply.type === 'thinking') {
+          console.log('🧠 收到思考过程，立即发送到前端');
+          await sendChunk({ type: 'thinking', thinking: fullReply.thinking });
+        }
       } else if (isEnd) {
         // 流式输出结束，准备保存完整回复
         const completeReply = {
@@ -457,6 +463,9 @@ router.post('/stream', authenticateToken, async (req, res) => {
           }
           if (fullReply.thinking) {
             completeReply.thinking = fullReply.thinking;
+            // 发送思考过程到前端
+            console.log('🧠 发送思考过程到前端');
+            await sendChunk({ type: 'thinking', thinking: fullReply.thinking });
           }
         }
 

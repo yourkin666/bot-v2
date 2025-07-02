@@ -1715,6 +1715,19 @@
 
                       // 立即尝试插入，如果失败会自动重试
                       tryInsertWeatherCard();
+                    } else if (data.type === 'thinking') {
+                      // 处理思考过程数据
+                      console.log('🧠 收到思考过程数据:', data.thinking);
+                      window.currentThinkingData = data.thinking;
+                      
+                      // 在AI消息中插入思考过程
+                      if (aiMessageElement) {
+                        const aiMessageContainer = aiMessageElement.closest('.ai-message');
+                        if (aiMessageContainer) {
+                          insertThinkingProcess(aiMessageContainer, data.thinking);
+                          console.log('🧠 思考过程已添加到消息中');
+                        }
+                      }
                     } else if (data.type === 'content') {
                       aiContent += data.content;
                       // 实现打字机效果（防抖优化）
@@ -2100,14 +2113,22 @@ ${renderedMessage}
       function bindThinkingToggle() {
         document.querySelectorAll('.thinking-toggle').forEach(button => {
           button.addEventListener('click', function () {
-            const thinkingProcess = this.nextElementSibling;
+            // 找到思考过程容器
+            const thinkingProcess = this.closest('.mb-4, .mb-3').querySelector('.thinking-process');
+            if (!thinkingProcess) return;
+            
             thinkingProcess.classList.toggle('expanded');
-            // 更新箭头图标
-            const arrowIcon = this.querySelector('.ri-arrow-down-s-line, .ri-arrow-up-s-line');
+
+            // 更新按钮文本和箭头图标
+            const buttonText = this.querySelector('span');
+            const arrow = this.querySelector('.ri-arrow-up-s-line, .ri-arrow-down-s-line');
+            
             if (thinkingProcess.classList.contains('expanded')) {
-              arrowIcon.classList.replace('ri-arrow-down-s-line', 'ri-arrow-up-s-line');
+              buttonText.textContent = '收起';
+              arrow.className = 'ri-arrow-up-s-line transition-transform duration-300';
             } else {
-              arrowIcon.classList.replace('ri-arrow-up-s-line', 'ri-arrow-down-s-line');
+              buttonText.textContent = '展开';
+              arrow.className = 'ri-arrow-down-s-line transition-transform duration-300';
             }
           });
         });
@@ -2402,13 +2423,16 @@ ${renderedMessage}
           const thinkingText = isDeepThinking ? 'text-slate-600' : 'text-blue-800';
           
           thinkingHTML = `
-    <div class="mb-3">
-      <button class="thinking-toggle flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group">
+    <div class="mb-4">
+      <div class="thinking-header flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
         <i class="${thinkingIcon} text-base ${isDeepThinking ? 'text-indigo-600' : 'text-blue-600'}"></i>
         <span>${thinkingLabel}</span>
-        <i class="ri-arrow-down-s-line transition-transform duration-300 group-hover:translate-y-0.5"></i>
-      </button>
-      <div class="thinking-process mt-3 ${thinkingBg} ${thinkingBorder} rounded-xl p-4 text-sm ${thinkingText} shadow-sm">
+        <button class="thinking-toggle ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+          <span>收起</span>
+          <i class="ri-arrow-up-s-line transition-transform duration-300"></i>
+        </button>
+      </div>
+      <div class="thinking-process expanded mt-3 ${thinkingBg} ${thinkingBorder} rounded-xl p-4 text-sm ${thinkingText} shadow-sm">
         <div class="thinking-content leading-relaxed">
           ${thinking.content.split('\n').map(line => 
             line.trim() ? `<div class="mb-2 pl-3 ${line.includes('→') ? 'font-medium text-gray-700' : 'text-gray-600'}">${line}</div>` : ''
@@ -2420,6 +2444,13 @@ ${renderedMessage}
             <span>由 DeepSeek R1 深度思考模型生成</span>
           </div>
         ` : ''}
+      </div>
+      <div class="thinking-answer-separator mt-4 mb-3 flex items-center">
+        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+        <div class="px-3 text-xs text-gray-500 bg-white">
+          <i class="ri-arrow-down-line"></i> 最终答案
+        </div>
+        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
       </div>
     </div>
   `;
@@ -2632,6 +2663,73 @@ ${renderedMessage}
           console.log('✅ 天气卡片插入成功并应用动画');
         } else {
           console.error('❌ 天气卡片插入失败');
+        }
+      }
+
+      // 插入思考过程到消息中
+      function insertThinkingProcess(messageContainer, thinkingData) {
+        if (!thinkingData || !thinkingData.content) {
+          console.warn('⚠️ 无效的思考过程数据:', thinkingData);
+          return;
+        }
+
+        // 检查是否已经插入过思考过程
+        if (messageContainer.querySelector('.thinking-process')) {
+          console.log('🧠 思考过程已存在，跳过重复插入');
+          return;
+        }
+
+        const isDeepThinking = thinkingData.isDeepThinking || thinkingData.model === 'DeepSeek-R1';
+        const thinkingIcon = isDeepThinking ? 'ri-brain-2-line' : 'ri-brain-line';
+        const thinkingLabel = isDeepThinking ? '🧠 深度思考过程' : '💭 思考过程';
+        const thinkingBg = isDeepThinking ? 'bg-gradient-to-r from-slate-50 to-gray-50' : 'bg-blue-50';
+        const thinkingBorder = isDeepThinking ? 'border-l-4 border-indigo-400' : 'border-l-4 border-blue-400';
+        const thinkingText = isDeepThinking ? 'text-slate-600' : 'text-blue-800';
+
+        const thinkingHTML = `
+          <div class="mb-4">
+            <div class="thinking-header flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <i class="${thinkingIcon} text-base ${isDeepThinking ? 'text-indigo-600' : 'text-blue-600'}"></i>
+              <span>${thinkingLabel}</span>
+              <button class="thinking-toggle ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                <span>收起</span>
+                <i class="ri-arrow-up-s-line transition-transform duration-300"></i>
+              </button>
+            </div>
+            <div class="thinking-process expanded mt-3 ${thinkingBg} ${thinkingBorder} rounded-xl p-4 text-sm ${thinkingText} shadow-sm">
+              <div class="thinking-content leading-relaxed">
+                ${thinkingData.content.split('\n').map(line => 
+                  line.trim() ? `<div class="mb-2 pl-3 ${line.includes('→') ? 'font-medium text-gray-700' : 'text-gray-600'}">${line}</div>` : ''
+                ).filter(Boolean).join('')}
+              </div>
+              ${isDeepThinking ? `
+                <div class="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 text-xs text-gray-500">
+                  <i class="ri-cpu-line"></i>
+                  <span>由 DeepSeek R1 深度思考模型生成</span>
+                </div>
+              ` : ''}
+            </div>
+            <div class="thinking-answer-separator mt-4 mb-3 flex items-center">
+              <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              <div class="px-3 text-xs text-gray-500 bg-white">
+                <i class="ri-arrow-down-line"></i> 最终答案
+              </div>
+              <div class="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+            </div>
+          </div>
+        `;
+
+        // 找到消息内容的容器，在内容前插入思考过程
+        const messageContentElement = messageContainer.querySelector('.markdown-content');
+        if (messageContentElement && messageContentElement.parentElement) {
+          messageContentElement.parentElement.insertAdjacentHTML('afterbegin', thinkingHTML);
+          
+          // 绑定思考过程切换事件
+          bindThinkingToggle();
+          
+          console.log('🧠 思考过程已成功插入到消息中');
+        } else {
+          console.warn('⚠️ 找不到消息内容容器，思考过程插入失败');
         }
       }
 
