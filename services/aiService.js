@@ -257,11 +257,26 @@ ${searchResults.results.map((r, i) =>
       console.log('📥 AI回复:', aiReply);
 
       // 构建回复对象
-      const reply = {
+      let reply = {
         role: 'assistant',
         content: aiReply,
         timestamp: new Date().toISOString()
       };
+
+      // 如果使用深度思考模式(R1模型)，提取思考过程
+      if (useThinking) {
+        const extracted = this.extractR1ThinkingProcess(aiReply);
+        reply.content = extracted.finalAnswer;
+        if (extracted.thinkingProcess) {
+          reply.thinking = {
+            content: extracted.thinkingProcess,
+            isDeepThinking: true,
+            model: 'DeepSeek-R1',
+            timestamp: new Date().toISOString()
+          };
+          console.log('🧠 已提取R1模型的思考过程');
+        }
+      }
 
       // 添加搜索信息到回复中
       if (searchResults && searchResults.success) {
@@ -281,12 +296,6 @@ ${searchResults.results.map((r, i) =>
         reply.fileAnalysis = fileAnalysis;
         console.log('🎨 已添加文件分析信息到回复中');
       }
-
-      // 深度思考模式下，思考过程已经由DeepSeek模型完成
-      // 这里不需要额外生成思考内容，避免重复调用和错误
-      // if (useThinking) {
-      //   reply.thinking = await this.generateThinkingProcess(messages, searchResults);
-      // }
 
       return reply;
 
@@ -592,84 +601,51 @@ ${searchResults.results.map((r, i) =>
       console.log('✅ API调用成功 - 开始接收流式响应');
 
       let fullReply = '';
-      let thinkingContent = '';
-      let finalAnswer = '';
-      let isInThinking = false;
-      let buffer = '';
 
+      // 流式接收内容
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || '';
         if (content) {
           console.log('📥 收到内容块:', JSON.stringify(content)); // 调试输出
-          buffer += content;
-          
-          // 检查是否开始思考过程
-          if (buffer.includes('<think>') && !isInThinking) {
-            const thinkStart = buffer.indexOf('<think>');
-            if (thinkStart >= 0) {
-              // 发送思考开始前的内容
-              const beforeThink = buffer.substring(0, thinkStart);
-              if (beforeThink.trim()) {
-                finalAnswer += beforeThink;
-                callback(beforeThink, false);
-              }
-              
-              isInThinking = true;
-              buffer = buffer.substring(thinkStart + 7); // 移除 '<think>'
-              console.log('🤔 开始接收思考过程');
-            }
-          }
-          
-          // 检查是否结束思考过程
-          if (buffer.includes('</think>') && isInThinking) {
-            const thinkEnd = buffer.indexOf('</think>');
-            if (thinkEnd >= 0) {
-              // 提取思考内容
-              const thinkPart = buffer.substring(0, thinkEnd);
-              thinkingContent += thinkPart;
-              
-              isInThinking = false;
-              buffer = buffer.substring(thinkEnd + 8); // 移除 '</think>'
-              console.log('🤔 思考过程结束，长度:', thinkingContent.length);
-              
-              // 继续处理剩余内容
-              if (buffer.trim()) {
-                finalAnswer += buffer;
-                callback(buffer, false);
-                buffer = '';
-              }
-            }
-          } else if (isInThinking) {
-            // 在思考过程中，累积思考内容
-            thinkingContent += content;
-          } else {
-            // 正常内容，直接发送
-            finalAnswer += content;
-            callback(content, false);
-            buffer = '';
-          }
-          
           fullReply += content;
+          
+          // 直接发送内容给前端，不在流式过程中处理思考过程
+          // 因为硅基流动的R1模型可能不使用标准的<think>标签格式
+          callback(content, false);
+        }
+      }
+
+      // 如果使用深度思考模式，尝试从完整回复中提取思考过程
+      let extractedContent = fullReply;
+      let thinkingProcess = null;
+      
+      if (useThinking && fullReply) {
+        console.log('🧠 开始从R1模型回复中提取思考过程');
+        const extracted = this.extractR1ThinkingProcess(fullReply);
+        extractedContent = extracted.finalAnswer;
+        if (extracted.thinkingProcess) {
+          thinkingProcess = {
+            content: extracted.thinkingProcess,
+            isDeepThinking: true,
+            model: 'DeepSeek-R1',
+            timestamp: new Date().toISOString()
+          };
+          console.log('🧠 成功提取思考过程，长度:', extracted.thinkingProcess.length);
+        } else {
+          console.log('🤔 未检测到明显的思考过程分隔符');
         }
       }
 
       // 构建完整回复对象
       const completeReply = {
         role: 'assistant',
-        content: finalAnswer || fullReply, // 优先使用解析后的最终答案
+        content: extractedContent,
         timestamp: new Date().toISOString()
       };
 
-
-
-      // 如果有原始思考过程，也添加到回复中
-      if (thinkingContent.trim()) {
-        completeReply.thinking = {
-          content: thinkingContent.trim(),
-          isDeepThinking: useThinking,
-          model: useThinking ? 'DeepSeek-R1' : this.model
-        };
-        console.log('🤔 已添加思考过程到回复中，长度:', thinkingContent.length);
+      // 添加思考过程到回复中
+      if (thinkingProcess) {
+        completeReply.thinking = thinkingProcess;
       }
 
       // 添加搜索信息到回复中
@@ -1123,6 +1099,164 @@ ${searchResults.results.map((r, i) =>
       if (now - timestamp > this.weatherQueryCooldown) {
         this.weatherQueryCache.delete(key);
       }
+    }
+  }
+
+  // 提取R1模型的思考过程
+  extractR1ThinkingProcess(content) {
+    try {
+      console.log('🧠 开始分析R1模型回复，内容长度:', content.length);
+      console.log('🧠 回复内容预览:', content.substring(0, 200) + '...');
+
+      // 方法1：尝试提取<think>标签内容
+      const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+      if (thinkMatch) {
+        console.log('✅ 发现<think>标签，提取思考过程');
+        const thinkingProcess = thinkMatch[1].trim();
+        const finalAnswer = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        return {
+          thinkingProcess,
+          finalAnswer: finalAnswer || content
+        };
+      }
+
+      // 方法2：尝试提取<reasoning>标签内容
+      const reasoningMatch = content.match(/<reasoning>([\s\S]*?)<\/reasoning>/);
+      if (reasoningMatch) {
+        console.log('✅ 发现<reasoning>标签，提取思考过程');
+        const thinkingProcess = reasoningMatch[1].trim();
+        const finalAnswer = content.replace(/<reasoning>[\s\S]*?<\/reasoning>/g, '').trim();
+        return {
+          thinkingProcess,
+          finalAnswer: finalAnswer || content
+        };
+      }
+
+      // 方法3：检查是否有明显的思考过程分隔符
+      const sections = content.split(/(?:\n\n---\n\n|\n\n【思考过程】\n\n|\n\n【推理过程】\n\n)/);
+      if (sections.length > 1) {
+        console.log('✅ 发现分隔符，共', sections.length, '个部分');
+        // 通常第一部分是思考过程，后面是最终答案
+        const thinkingProcess = sections[0].trim();
+        const finalAnswer = sections.slice(1).join('\n\n').trim();
+        
+        // 验证是否确实是思考过程（包含推理关键词）
+        const thinkingKeywords = ['思考', '分析', '推理', '考虑', '判断', '因为', '所以', '首先', '然后', '接下来', '总结'];
+        const hasThinkingKeywords = thinkingKeywords.some(keyword => thinkingProcess.includes(keyword));
+        
+        if (hasThinkingKeywords && thinkingProcess.length > 50) {
+          console.log('✅ 验证通过，包含思考关键词');
+          return {
+            thinkingProcess,
+            finalAnswer: finalAnswer || content
+          };
+        }
+      }
+
+      // 方法4：检查内容是否明显分为两部分（思考+回答）
+      const lines = content.split('\n');
+      const thinkingIndicators = [
+        '我来思考', '让我分析', '首先分析', '思考过程', '推理过程',
+        '让我仔细', '我需要', '分析一下', '考虑一下', '想一想'
+      ];
+      
+      const hasThinkingIndicators = lines.some(line => 
+        thinkingIndicators.some(indicator => line.includes(indicator))
+      );
+
+      if (hasThinkingIndicators && content.length > 200) {
+        console.log('✅ 发现思考指示词');
+        // 尝试找到思考和回答的分界点
+        const answerPatterns = [
+          /(?:总结来说|综上所述|最终答案|我的回答是|答案是|结论是|因此|所以我认为)/,
+          /(?:\n\n好的|呀！|哇！|哈哈|嘿嘿)/,
+          /(?:让我们|我们可以|你可以|小朋友)/
+        ];
+
+        for (const pattern of answerPatterns) {
+          const answerStart = content.search(pattern);
+          if (answerStart > 0 && answerStart < content.length * 0.7) { // 确保分界点在前70%
+            const thinkingProcess = content.substring(0, answerStart).trim();
+            const finalAnswer = content.substring(answerStart).trim();
+            
+            // 验证思考过程的合理性
+            if (thinkingProcess.length > 30 && finalAnswer.length > 10) {
+              console.log('✅ 找到合理的思考/回答分界点');
+              return {
+                thinkingProcess,
+                finalAnswer
+              };
+            }
+          }
+        }
+      }
+
+      // 方法5：硅基R1模型特殊处理 - 寻找最终答案段落
+      if (content.length > 300) {
+        console.log('🤔 尝试硅基R1模型特殊分割');
+        
+        // 寻找"最终答案"、"答案"等关键词段落
+        const finalAnswerPatterns = [
+          /###?\s*最终答案[\s\S]*$/,
+          /###?\s*答案[\s\S]*$/,
+          /\*\*.*?答案.*?\*\*[\s\S]*$/,
+          /所以.*?=.*?\d+.*$/m
+        ];
+        
+        for (const pattern of finalAnswerPatterns) {
+          const match = content.match(pattern);
+          if (match) {
+            const finalAnswerStart = content.indexOf(match[0]);
+            if (finalAnswerStart > 0) {
+              const thinkingProcess = content.substring(0, finalAnswerStart).trim();
+              const finalAnswer = match[0].trim();
+              
+              console.log('✅ 找到最终答案段落，分割成功');
+              return {
+                thinkingProcess,
+                finalAnswer
+              };
+            }
+          }
+        }
+        
+        // 如果没找到明确的最终答案段落，但内容很长，就将其视为详细推理过程
+        if (content.length > 500) {
+          console.log('✅ 长内容识别为详细推理过程');
+          
+          // 尝试提取简短的核心答案
+          const numberPattern = /(\d+\s*[×*]\s*\d+\s*=\s*\d+)/g;
+          const matches = content.match(numberPattern);
+          
+          if (matches && matches.length > 0) {
+            const coreAnswer = matches[matches.length - 1]; // 取最后一个数学表达式
+            return {
+              thinkingProcess: content.trim(),
+              finalAnswer: `核心答案：${coreAnswer}`
+            };
+          } else {
+            // 如果没有明显的数学表达式，就将整个内容作为思考过程
+            return {
+              thinkingProcess: content.trim(),
+              finalAnswer: '详细解答见上述思考过程 ✨'
+            };
+          }
+        }
+      }
+
+      // 如果没有找到明显的思考过程分隔，返回原内容
+      console.log('❌ 未检测到思考过程分隔符，将整个内容作为最终回答');
+      return {
+        thinkingProcess: null,
+        finalAnswer: content
+      };
+
+    } catch (error) {
+      console.error('❌ 提取思考过程失败:', error);
+      return {
+        thinkingProcess: null,
+        finalAnswer: content
+      };
     }
   }
 }
